@@ -1,0 +1,32 @@
+[build-system]
+requires = ["poetry-core>=1.1.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "proteoxystis"
+authors = ["Reto Stamm"]
+maintainers = ["Reto Stamm"]
+description = "Minimal python project that exposes a commandline feature"
+readme = "README.md"
+version = "0.0.1"
+keywords = ["example"]
+license = "GPL-3"
+classifiers = [ "Programming Language :: Python :: 3", ]
+homepage = "https://github.com/retospect/proteoxystis"
+repository = "https://github.com/retospect/proteoxystis" 
+
+[tool.poetry.scripts]
+protex = "proteoxystis.protex:protex"
+
+[tool.bumpver]
+current_version = "0.0.1"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
+"src/proteoxystis/__init__.py" = ["{version}"]
+
