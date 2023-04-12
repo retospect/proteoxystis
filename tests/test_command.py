@@ -7,8 +7,8 @@ def test_commandline_installed():
         print("Skipping command line command testing")
         return  # The following does not work as a test on windows
 
-    p = Popen(["fafa"], stdout=PIPE, stderr=STDOUT)
+    p = Popen(["protex"], stdout=PIPE, stderr=STDOUT)
     out, _ = p.communicate()
     niceout = out.decode("utf-8")
     print(niceout)
-    assert "Warbling" in niceout
+    assert "water" in niceout
