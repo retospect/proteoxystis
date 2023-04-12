@@ -5,12 +5,18 @@
 
 Given the DNA sequence, predicts a set of likely solvents for that protein
 
-## Things to replace
+## Determining structure
 
-- ```grep -ri word .``` will find the *word* in all the files
-- ```find . | grep word``` will find the *word* in any filenames
-- *retospect* - changed to your github user name
-- *proteoxystis* - change to the name of your project
-- *wobble* - change to the internal package name you want to use 
-- *fafa* - change to whatever your commandline command should be if you are providing a script
-- update the pyproject.py file to have your name and the right description. 
+- install package with ```pip install protexystis```.
+- run prediction with ```protex sequence.fa```. The output is a list of predicted solvents. 
+
+## Training the model and updating the package
+
+- clone the repo
+- use the scripts in the ```run``` directory to 
+  1. Get the data from PDB
+  2. Sanitize the data
+  3. Train the model
+  4. Update the package with new training data
+  5. Use maintainernotes to publish package
+  
