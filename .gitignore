@@ -6,3 +6,5 @@ dist
 poetry.lock
 ***.pdf
 ***.txt
+bin/data
+***.err
