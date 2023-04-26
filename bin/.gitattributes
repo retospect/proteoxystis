@@ -1,2 +1,4 @@
 pdb.toml.gz filter=lfs diff=lfs merge=lfs -text
-training.toml.gz filter=lfs diff=lfs merge=lfs -text
+training.toml filter=lfs diff=lfs merge=lfs -text
+pdb.err.gz filter=lfs diff=lfs merge=lfs -text
+

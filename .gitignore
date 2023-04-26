@@ -9,3 +9,4 @@ poetry.lock
 bin/data
 ***.err
 .DS_Store
+bin/tidy.err
