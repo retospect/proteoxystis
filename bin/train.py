@@ -9,7 +9,7 @@ import torch.optim as optim
 
 
 print("Loading data...", end="")
-with open('training_data.pickle', 'rb') as f:
+with open("training_data.pickle", "rb") as f:
     metadata, seqs, output = pickle.load(f)
 print("done")
 
@@ -24,7 +24,4 @@ print("done")
 # seqs   - an np.int8    array, rows = pdb entries, columns = aminoacids with one-hot encoding
 # output - an np.float16 array, rows = pdb entries, columns = output floats
 
-
-# Trains the model
-# See https://stackoverflow.com/questions/68820453/how-to-run-pytorch-on-macbook-pro-m1-gpu
-# for M1 optimization
+# Optimize for M1 and M2 when able.

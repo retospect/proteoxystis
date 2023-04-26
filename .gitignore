@@ -11,3 +11,4 @@ bin/data
 .DS_Store
 bin/tidy.err
 ***.pickle
+***sig_keys.csv

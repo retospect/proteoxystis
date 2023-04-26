@@ -101,7 +101,9 @@ def main(quick=False):
                         else:
                             # SEQID appart from A found; deal with later
                             bugger.write(
-                                "ERROR 02: [" + file + "] SEQID in addition to A found\n"
+                                "ERROR 02: ["
+                                + file
+                                + "] SEQID in addition to A found\n"
                             )
                             continue
 
