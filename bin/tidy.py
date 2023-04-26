@@ -146,7 +146,7 @@ with open("training.toml", "wt") as f:
             # if there are fewer than 4 interesting things in the values hash, skip the writing and throw an error
             if len(values) < 4:
                 #raise PdbParseException(f"ERROR 58: [{key}] Is not interesting, less than 4 values found: {crco}".format(key=key, crco=crco))
-                pass
+                continue
             solvent = pdb[key]["crystal_conditions"]
 
             sequence = pdb[key]["sequence"]
