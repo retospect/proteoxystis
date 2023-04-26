@@ -147,6 +147,16 @@ with open("training.toml", "wt") as f:
             if len(values) < 4:
                 #raise PdbParseException(f"ERROR 58: [{key}] Is not interesting, less than 4 values found: {crco}".format(key=key, crco=crco))
                 continue
+
+            # if any value is greater or smaller than what numpy.half can hold, continue
+            for val in values.values():
+                if val > np.finfo(np.half).max:
+                    #raise PdbParseException(f"ERROR 59: [{key}] Is not interesting, value too large: {crco}".format(key=key, crco=crco))
+                    continue
+                if val < np.finfo(np.half).min:
+                    #raise PdbParseException(f"ERROR 60: [{key}] Is not interesting, value too small: {crco}".format(key=key, crco=crco))
+                    continue
+
             solvent = pdb[key]["crystal_conditions"]
 
             sequence = pdb[key]["sequence"]
@@ -170,7 +180,7 @@ with open("training.toml", "wt") as f:
 
 
         except PdbParseException as e:
-            print(e)
+            # print(e)
             err.write(str(e) + "\n")
             continue
     f.write("\n")
