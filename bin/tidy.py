@@ -20,9 +20,11 @@ class PdbParseException (Exception):
 
 # Open the pdb.toml file
 with gzip.open("pdb.toml.gz", "rt") as f:
-    print("Loading data...")
+    print("Loading data...", end="", flush=True)
     pdb = toml.load(f)
+    print("done")
 
+print("processing")
 err = open("tidy.err", "wt")
 
 # Sequence lenght for some stats
@@ -39,6 +41,7 @@ with open("training.toml", "wt") as f:
     # The set of all hash keys
     key_count = {}
     # Process each top level key
+    print("Writing training.toml")
     for key in tqdm.tqdm(pdb.keys()):
         try: 
             # Get the value
@@ -150,11 +153,11 @@ with open("training.toml", "wt") as f:
 
             # if any value is greater or smaller than what numpy.half can hold, continue
             for val in values.values():
-                if val > np.finfo(np.half).max:
-                    #raise PdbParseException(f"ERROR 59: [{key}] Is not interesting, value too large: {crco}".format(key=key, crco=crco))
+                if val >= np.finfo(np.half).max:
+                    raise PdbParseException(f"ERROR 59: [{key}] Is not interesting, value too large: {crco}".format(key=key, crco=crco))
                     continue
-                if val < np.finfo(np.half).min:
-                    #raise PdbParseException(f"ERROR 60: [{key}] Is not interesting, value too small: {crco}".format(key=key, crco=crco))
+                if val <= np.finfo(np.half).min:
+                    raise PdbParseException(f"ERROR 60: [{key}] Is not interesting, value too small: {crco}".format(key=key, crco=crco))
                     continue
 
             solvent = pdb[key]["crystal_conditions"]

@@ -81,11 +81,20 @@ for i, k in tqdm(list(enumerate(pdb_names))):
 output = np.zeros((len(pdb_names), len(useable_keys)*2), dtype=np.float16) # maybe use dtype=np.int8) to reduce memory
 print("Output array size (pdb x one-hot output): ", output.shape)
 print("Filling output array")
+np.seterr(all="raise")
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
         if key in data[k]['values'].keys():
             output[i, j*2] = 1
-            output[i, j*2+1] = data[k]['values'][key]
+            try:
+                output[i, j*2+1] = data[k]['values'][key]
+            except FloatingPointError as someEx:
+                print("YOLO")
+                print(k)
+                print("Error in ", k, " ", key)
+                print(someEx)
+                print(data[k]['values'][key]) 
+                output[i, j*2+1] = np.finfo(np.half).max
         else:
             output[i, j*2] = 0
             output[i, j*2+1] = 0

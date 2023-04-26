@@ -4,6 +4,8 @@ TLDR:
 - After checking out the repo, run ```pickelize.py``` to make the 9GB pickle of the one hot encoded data.
 - then mess with the train*.py scripts to make the model better.
 
+Then add a copy/variant of the training script and make it awesome.
+
 ## Tools
 
 Tools, in order of dataflow path. 
