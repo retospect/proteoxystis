@@ -208,4 +208,8 @@ with open("training.toml", "wt") as f:
 
     f.write(f"sig_key_count_gt_10 = {key_count_gt_10}\n")
 
+# print a list of all the significant keys to the sig_keys.csv file
+with open("sig_keys.csv", "w") as f:
+    for k in sig_key_count.keys():
+        f.write(f"{k}\n")
 
