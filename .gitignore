@@ -8,3 +8,4 @@ poetry.lock
 ***.txt
 bin/data
 ***.err
+.DS_Store

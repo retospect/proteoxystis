@@ -29,6 +29,7 @@ def main(quick=False):
         "ARG": "R",
         "ASN": "N",
         "ASP": "D",
+        "UNK": "u",
         "CYS": "C",
         "GLN": "Q",
         "GLU": "E",
@@ -48,7 +49,7 @@ def main(quick=False):
     }
     fseq = 1
     # open the toml.gz file to write gzipped toml into
-    bugger = open("issues.txt", "w")
+    bugger = gzip.open("pdb.err.gz", "wt")
     with gzip.open("pdb.toml.gz", "wt") as toml:
         # show a progress bar to indicate how many files have been processed
 
@@ -88,16 +89,36 @@ def main(quick=False):
                                         sequence += codon_hash[codon]
                                     except KeyError:
                                         bugger.write(
-                                            file + " KeyError codon " + codon + "\n"
+                                            "ERROR 01: ["
+                                            + file
+                                            + "] KeyError codon "
+                                            + codon
+                                            + "\n"
                                         )
                                         continue
                                 else:
                                     sequence += codon + " "
+                        else:
+                            # SEQID appart from A found; deal with later
+                            bugger.write(
+                                "ERROR 02: [" + file + "] SEQID in addition to A found\n"
+                            )
+                            continue
 
                 # if the experiment type is not a crystallography experiment, does not have a sequence or does not have conditions, skip the file
                 if crystal_conditions == "":
+                    bugger.write(
+                        "ERROR 03: ["
+                        + file
+                        + "] No crystal condition found (this may be not a crystallized protein, check)\n"
+                    )
                     continue
                 if sequence == "":
+                    bugger.write(
+                        "ERROR 04: ["
+                        + file
+                        + "] No protein sequence found. Something is weird here.\n"
+                    )
                     continue
 
                 # if experiment_type == '':
@@ -121,6 +142,8 @@ def main(quick=False):
                 toml.write(f"fseq = {fseq}\n")
                 toml.write("\n")
                 fseq += 1
+
+    bugger.close()
 
 
 if __name__ == "__main__":

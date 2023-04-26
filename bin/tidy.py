@@ -14,7 +14,7 @@ import gzip
 import re
 
 # Open the pdb.toml file
-with gzip.open("pdb.toml.gz", "rt") as f:
+with gzip.open("pdb-few.toml.gz", "rt") as f:
     print("Loading data...")
     pdb = toml.load(f)
 
