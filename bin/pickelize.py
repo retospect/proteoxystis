@@ -106,7 +106,9 @@ for i, k in tqdm(list(enumerate(pdb_names))):
 # do this rarely if ever lest we learn about the training data
 if False:
     # generate a list of test data, pick 25% of the pdb names at random
-    testpdb_names = np.random.choice(pdb_names, int(len(pdb_names) * 0.25), replace=False)
+    testpdb_names = np.random.choice(
+        pdb_names, int(len(pdb_names) * 0.25), replace=False
+    )
     print("Writing test data to test.toml")
     with open("test.toml", "w") as f:
         f.write("# Test data records. These are sacred. Do not use for training.\n")
@@ -126,7 +128,7 @@ with open("test.toml", "r") as f:
 testpdb_names = set(testdata["testdata"]["pdb_names"])
 
 # separate the test data from the training data
-# This should make the 
+# This should make the
 # - np arrays seqs_test and seqs_train from seqs
 # - np arrays output_test and output_train from output
 # - lists pdb_names_test and pdb_names_train from pdb_names
@@ -144,9 +146,7 @@ seqs_train = np.zeros(
     dtype=np.int8,
 )
 # initialize output_test and output_train to the size they will have
-output_test = np.zeros(
-    (len(testpdb_names), len(useable_keys) * 2), dtype=np.float16
-)
+output_test = np.zeros((len(testpdb_names), len(useable_keys) * 2), dtype=np.float16)
 output_train = np.zeros(
     (len(pdb_names) - len(testpdb_names), len(useable_keys) * 2), dtype=np.float16
 )
@@ -170,5 +170,13 @@ metadata["pdb_names_train"] = pdb_names_train
 # pickle the data
 print("Pickeling data")
 with open("training_data.pickle", "wb") as f:
-    pickle.dump((metadata, seqs_train, output_train, seqs_test, output_test, ), f)
-
+    pickle.dump(
+        (
+            metadata,
+            seqs_train,
+            output_train,
+            seqs_test,
+            output_test,
+        ),
+        f,
+    )

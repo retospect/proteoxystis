@@ -7,6 +7,30 @@ TLDR:
 
 Then add a copy/variant of the training script and make it awesome.
 
+## Example
+
+### Predict a pdb entry:
+```
+train.py --predict 7usp         
+Loading data...done
+seqs.shape:    (75371, 86688)
+output.shape:  (75371, 1464)
+Preloading model from model.pt
+Testing...Using CPU
+done
+Test loss: 7260.45166015625
+Predicting 7usp
+Delta for PDBID: 7usp
+key                 actual     predicted  delta     
+peg_length               -1.00     441.86 missing     
+matthews                 51.12      39.18       -11.95
+dtt_mm                   10.00      -1.00 excess      
+sodium_citrate__mm      100.00      -1.00 excess      
+peg_percent              -1.00       8.32 missing     
+vm_a_pwr_da               2.52       2.28        -0.24
+ph                        6.50       5.75        -0.75
+```
+
 ## Tools
 
 Tools, in order of dataflow path. 
