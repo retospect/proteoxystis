@@ -61,7 +61,6 @@ aminoacids = sorted(list(aminoacids))
 
 # make the metadata dict to be pickeld
 metadata = {}
-metadata["pdb_names"] = pdb_names
 metadata["sig_keys"] = useable_keys
 metadata["aminoacids"] = aminoacids
 
@@ -103,7 +102,73 @@ for i, k in tqdm(list(enumerate(pdb_names))):
             output[i, j * 2] = 0
             output[i, j * 2 + 1] = 0
 
+# Write the testdata to test.toml file
+# do this rarely if ever lest we learn about the training data
+if False:
+    # generate a list of test data, pick 25% of the pdb names at random
+    testpdb_names = np.random.choice(pdb_names, int(len(pdb_names) * 0.25), replace=False)
+    print("Writing test data to test.toml")
+    with open("test.toml", "w") as f:
+        f.write("# Test data records. These are sacred. Do not use for training.\n")
+        f.write("[testdata]\n")
+        f.write("pdb_names = [")
+        for i, pdb in enumerate(testpdb_names):
+            f.write('"' + pdb + '"')
+            if i != len(testpdb_names) - 1:
+                f.write(", ")
+        f.write("]\n")
+
+# read the test.toml file into the testpdb_names set
+print("Reading test data from test.toml")
+with open("test.toml", "r") as f:
+    testdata = toml.load(f)
+# make the set
+testpdb_names = set(testdata["testdata"]["pdb_names"])
+
+# separate the test data from the training data
+# This should make the 
+# - np arrays seqs_test and seqs_train from seqs
+# - np arrays output_test and output_train from output
+# - lists pdb_names_test and pdb_names_train from pdb_names
+# - list useable_keys_test and useable_keys_train from useable_keys
+print("Separating test data from training data")
+# initialize pdb_names_test and pdb_names_train
+pdb_names_test = []
+pdb_names_train = []
+# initialize seqs_test and seqs_train to the size they will have
+seqs_test = np.zeros(
+    (len(testpdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.int8
+)
+seqs_train = np.zeros(
+    (len(pdb_names) - len(testpdb_names), longest_seq * nr_of_distinct_aminoacids),
+    dtype=np.int8,
+)
+# initialize output_test and output_train to the size they will have
+output_test = np.zeros(
+    (len(testpdb_names), len(useable_keys) * 2), dtype=np.float16
+)
+output_train = np.zeros(
+    (len(pdb_names) - len(testpdb_names), len(useable_keys) * 2), dtype=np.float16
+)
+
+for i, pdb in tqdm(list(enumerate(pdb_names))):
+    if pdb in testpdb_names:
+        pdb_names_test.append(pdb)
+        seqs_test[len(pdb_names_test) - 1, :] = seqs[i, :]
+        output_test[len(pdb_names_test) - 1, :] = output[i, :]
+    else:
+        pdb_names_train.append(pdb)
+        seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :]
+        output_train[len(pdb_names_train) - 1, :] = output[i, :]
+
+print("Test data size: ", seqs_test.shape)
+print("Training data size: ", seqs_train.shape)
+
+metadata["pdb_names_test"] = pdb_names_test
+metadata["pdb_names_train"] = pdb_names_train
+
 # pickle the data
 print("Pickeling data")
 with open("training_data.pickle", "wb") as f:
-    pickle.dump((metadata, seqs, output), f)
+    pickle.dump((metadata, seqs_train, output_train, seqs_test, output_test, ), f)
+

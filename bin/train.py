@@ -10,7 +10,7 @@ import torch.optim as optim
 
 print("Loading data...", end="")
 with open("training_data.pickle", "rb") as f:
-    metadata, seqs, output = pickle.load(f)
+    metadata, seqs, output, seqs_test, output_test = pickle.load(f)
 print("done")
 
 
@@ -25,3 +25,7 @@ print("done")
 # output - an np.float16 array, rows = pdb entries, columns = output floats
 
 # Optimize for M1 and M2 when able.
+
+# Print shapes of seqs and output
+print("seqs.shape:   ", seqs.shape)
+print("output.shape: ", output.shape)
