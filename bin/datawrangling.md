@@ -1,6 +1,7 @@
 # Datawrangling
 
 TLDR:
+- Install https://git-lfs.com/
 - After checking out the repo, run ```pickelize.py``` to make the 9GB pickle of the one hot encoded data.
 - then mess with the train*.py scripts to make the model better.
 

@@ -7,7 +7,32 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import random
+import argparse
+import copy
 from functools import lru_cache
+
+def parse_commandline():
+    ''' Setup commandline arguments and parse them. 
+    '''
+    parser = argparse.ArgumentParser(description='Train a neural network on the data.')
+    # preload this model file. Takes a filename. Verify that the file exists.
+    # default: model.pt
+    # check if file model.pt exists
+    # if it does, make it the default
+    load_model_default = None
+    try:
+        with open("model.pt", "rb") as f:
+             load_model_default = "model.pt"
+    except FileNotFoundError:
+        pass
+    parser.add_argument('--preload', type=str, default=load_model_default, help='preload a model from a file')
+
+    # number of training epochs, default 10
+    parser.add_argument('--epochs', type=int, default=10000, help='number of training epochs')
+
+    # do the parsing
+    args = parser.parse_args()
+    return args
 
 
 def load_data():
@@ -52,8 +77,8 @@ def setup_model(seqs, output):
     N = 1000  # num_samples_per_class
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_classes
-    H = 100  # num_hidden_units
-    inner_count = 9
+    H = 60  # num_hidden_units
+    inner_count = 30
     model = nn.Sequential(
         nn.Linear(D, H)
     )
@@ -66,7 +91,7 @@ def setup_model(seqs, output):
     print(model)
     return model
 
-def train(model, seqs, output):
+def train(model, seqs, output, training_epochs):
     # Setup training
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -77,16 +102,28 @@ def train(model, seqs, output):
 
     in_data = torch.from_numpy(seqs).float().to(find_torch_training_device())
     out_data = torch.from_numpy(output).float().to(find_torch_training_device())
-
-    for epoch in range(100):
+    best_model = model
+    # calculate current model loss
+    output_pred = model(in_data)
+    prev_loss = criterion(output_pred, out_data).item()
+    prev_save_epoch = 0
+    for epoch in range(training_epochs):
         optimizer.zero_grad()
-        output_pred = model(in_data  )
+        output_pred = model(in_data)
         loss = criterion(output_pred, out_data)
         loss.backward()
         optimizer.step()
-        if epoch % 10 == 0:
-            print("epoch: ", epoch, " loss: ", loss.item())
+        # print with format string: epoch, loss, best_loss
+        if loss.item() < prev_loss:
+            best_model = copy.deepcopy(model)
+            prev_loss = loss.item()
+            if epoch - prev_save_epoch > 100: # reduce for excessive saving
+                prev_save_epoch = epoch
+                torch.save(model, "model.pt")
+        print("Epoch: {:d}({:d}) Loss: {:10.2f} Best: {:10.2f}            ".format(epoch, prev_save_epoch, loss.item(), prev_loss), end="\r")
+    print()
     print("done")
+    return best_model
 
 
 def init_seeds(seed):
@@ -97,9 +134,16 @@ def init_seeds(seed):
     
 def main():
     metadata, seqs, output, seqs_test, output_test = load_data()
+    args = parse_commandline()
     init_seeds(42)
-    model = setup_model(seqs, output)
-    train(model, seqs, output)
+    if args.preload:
+        print("Preloading model from", args.preload)
+        model = torch.load(args.preload)
+    else:
+        model = setup_model(seqs, output)
+    train(model, seqs, output, args.epochs)
+    print("Saving model to model.pt")
+
 
 if __name__ == "__main__":
     main()
