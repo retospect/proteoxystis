@@ -1,5 +1,5 @@
 #! python
-
+from tqdm import tqdm
 import pickle
 import numpy as np
 import torch
@@ -39,7 +39,11 @@ def parse_commandline():
     parser.add_argument("--test", action="store_true", help="just test the model")
 
     # picks two random entries from the test set and shows them
-    parser.add_argument("--rpredict", action="store_true", help="random prediction, show two random entries from the test set")
+    parser.add_argument(
+        "--rpredict",
+        action="store_true",
+        help="random prediction, show two random entries from the test set",
+    )
 
     # number of training epochs, default 10
     parser.add_argument(
@@ -90,12 +94,13 @@ def find_torch_training_device():
     if torch.cuda.is_available():
         print("Using CUDA")
         return torch.device("cuda")
-    #elif torch.backends.mps.is_available():
+    # elif torch.backends.mps.is_available():
     #    print("Using MPS")
     #    return torch.device("mps")
     else:
         print("Using CPU")
         return torch.device("cpu")
+
 
 def append_to_model(model, n_input, n_output, layers, relu_spacing):
     model.append(nn.Linear(n_input, n_output))
@@ -106,14 +111,16 @@ def append_to_model(model, n_input, n_output, layers, relu_spacing):
             model.append(nn.ReLU())
     return model
 
+
 def setup_model(seqs, output):
     # Setup model
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
-    model = nn.Sequential(nn.Linear(D, 64))
-    model = append_to_model(model, 64, 32, 20, 10)
-    model = append_to_model(model, 32, 64, 1, 3)
-    model.append(nn.Linear(64, C))
+    model = nn.Sequential(nn.Linear(D, 512))
+    model = append_to_model(model, 512, 128, 1, 1)
+    model = append_to_model(model, 128, 32, 35, 10)
+    model = append_to_model(model, 32, 128, 2, 1)
+    model.append(nn.Linear(128, C))
     model.to(find_torch_training_device())
     return model
 
@@ -125,35 +132,43 @@ def train(model, seqs, output, training_epochs):
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # Train
-    print("Training...", end="")
-
+    print("Unpickling data...")
     in_data = torch.from_numpy(seqs).float().to(find_torch_training_device())
     out_data = torch.from_numpy(output).float().to(find_torch_training_device())
     best_model = model
     # calculate current model loss
     output_pred = model(in_data)
     prev_loss = criterion(output_pred, out_data).item()
+    prog = tqdm(range(training_epochs))
+    saved_epoch = 0
+    saved_model = 0
+    saved_loss = 0
+    current_loss = 0
     prev_save_epoch = 0
-    for epoch in range(training_epochs):
+    print("Training...", end="")
+    for epoch in prog:
+        prog.set_description(
+            "E:{:0.0f} SE:{:0.0f}@L:{:0.5f} L:{:0.5f}".format(
+                epoch, saved_epoch, saved_loss, current_loss
+            )
+        )
         optimizer.zero_grad()
         output_pred = model(in_data)
         loss = criterion(output_pred, out_data)
+        current_loss = loss.item()
         loss.backward()
         optimizer.step()
         # print with format string: epoch, loss, best_loss
-        if loss.item() < prev_loss:
+        if loss.item() < best_loss:
             best_model = copy.deepcopy(model)
-            prev_loss = loss.item()
-            if epoch - prev_save_epoch > 5:  # reduce for excessive saving
-                prev_save_epoch = epoch
-                torch.save(model, "model.pt")
-        print(
-            "Epoch: {:d}({:d}) Loss: {:4.4f} Best: {:4.4f}            ".format(
-                epoch, prev_save_epoch, loss.item(), prev_loss
-            ),
-            end="\r",
-        )
-    print()
+            best_loss = loss.item()
+            best_epoch = epoch
+        if epoch - prev_save_epoch > 25:  # reduce for excessive saving
+            saved_epoch = best_epoch
+            torch.save(best_model, "model.pt")
+            saved_loss = best_loss
+            prev_save_epoch = epoch
+
     print("done")
     return best_model
 
@@ -206,8 +221,12 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
     # Run the in_data thru the model
     output_pred = model(in_data)
 
-    pred_hash = get_active_values(output_pred, metadata["sig_keys"], metadata['correction_factor'])
-    actual_hash = get_active_values(out_data, metadata["sig_keys"], metadata['correction_factor'])
+    pred_hash = get_active_values(
+        output_pred, metadata["sig_keys"], metadata["correction_factor"]
+    )
+    actual_hash = get_active_values(
+        out_data, metadata["sig_keys"], metadata["correction_factor"]
+    )
 
     # Print pred_hash and the actual hash as a table
     # Combine the keys of the two hashes and use them as the first column
@@ -234,7 +253,9 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
             pct = ""
         else:
             delta = "{:12.2f}".format(predicted_value - actual_value)
-            pct = "{:12.2f}%".format((predicted_value - actual_value) / actual_value * 100)
+            pct = "{:12.2f}%".format(
+                (predicted_value - actual_value) / actual_value * 100
+            )
         # print the row
         print(
             "{:19s} {:10.2f} {:10.2f} {} {}".format(
@@ -254,10 +275,10 @@ def main():
         model = setup_model(seqs, output)
     if args.model:
         print(model)
-    
+
     testing = args.test or args.rpredict or args.rpredict
 
-    if not testing: 
+    if not testing:
         train(model, seqs, output, args.epochs)
 
     test(model, seqs_test, output_test)
@@ -269,6 +290,7 @@ def main():
         # pick two test records at random
         for pdbid in random.sample(metadata["pdb_names_test"], 2):
             predict(model, metadata, seqs, output, seqs_test, output_test, pdbid)
+
 
 if __name__ == "__main__":
     main()
