@@ -24,7 +24,7 @@ for k in data["metadata"]["sig_key_count"].keys():
 # Remove the keys that are not useable from all the pdb_keys
 # they may not exist
 print("Removing stupid data")
-for k in pdb_keys:
+for k in tqdm(pdb_keys):
     del_keys = []
     for key in data[k]["values"].keys():
         if key not in useable_keys:
@@ -34,6 +34,15 @@ for k in pdb_keys:
     # if values now has less than 4 keys, remove it from the pdb_keys
     if len(data[k]["values"].keys()) < 4:
         pdb_keys.remove(k)
+        continue
+    
+    # if ph is > 30, it's nonsense data. Delete the PDB entry
+    # Check if the key exists first
+    if "ph" in data[k]["values"].keys():
+        if data[k]["values"]["ph"] > 30:
+            #print("ph is > 30, removing pdb entry ", k)
+            pdb_keys.remove(k)
+            continue
 
 # Print the length of the pdb_keys
 print("after removing stupid data, this many remain ", len(pdb_keys))
@@ -67,20 +76,51 @@ metadata["aminoacids"] = aminoacids
 nr_of_distinct_aminoacids = len(aminoacids)
 
 # make the numpy sequence array for the data. Each row is a pdb in alphabetical order, with one-hot encoding of the sequence
-seqs = np.zeros(
-    (len(pdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.int8
-)  # maybe use dtype=np.int8) to reduce memory
+seqs = np.zeros( (len(pdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.bool_)  
 print("Input array size (pdb x one-hot sequence): ", seqs.shape)
 print("Filling sequence array")
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, aa in enumerate(data[k]["sequence"]):
         seqs[i, j * nr_of_distinct_aminoacids + aminoacids.index(aa)] = 1
 
+# Convert all the ph fields to 10**ph
+# That's done because pH is actually a logarithmic scale
+#for k in pdb_keys:
+#    if "ph" in data[k]["values"].keys():
+#        data[k]["values"]["ph"] = 10 ** data[k]["values"]["ph"]
+
+# Normalize all the output values.
+# The values are normalized by dividing by the standard deviation of the values
+# The new value is then divided by the mean of the new values
+# The the total coorection factor is stored in the metadata dict
+print("Normalizing output values")
+metadata["correction_factor"] = {}
+for key in tqdm(useable_keys):
+    values = []
+    value_owner = []
+    for k in pdb_keys:
+        if key in data[k]["values"].keys():
+            values.append(data[k]["values"][key])
+            value_owner.append(k)
+    values = np.array(values)
+    mean = np.mean(values)
+    values = values/mean
+    std = np.std(values)
+    if std == 0:
+        std = 1
+    values = values / std
+    values = 10* values
+    # show the key, value name, new mean and new std
+    # print(key, np.mean(values), np.std(values), min(values), max(values))
+    correction_factor = mean*std/10
+    metadata["correction_factor"][key] = correction_factor
+    for i in range(len(values)):
+        data[value_owner[i]]["values"][key] = values[i]
 # make the numpy array of output values. Each row is a pdb in alphabetical order.
 # Each row has a value for each of the useable keys, and a one-hot encoder stating if the value was present in the data
 
 output = np.zeros(
-    (len(pdb_names), len(useable_keys) * 2), dtype=np.float16
+    (len(pdb_names), len(useable_keys) * 2)
 )  # maybe use dtype=np.int8) to reduce memory
 print("Output array size (pdb x one-hot output): ", output.shape)
 print("Filling output array")
@@ -88,7 +128,7 @@ np.seterr(all="raise")
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
         if key in data[k]["values"].keys():
-            output[i, j * 2] = 1
+            output[i, j * 2] = 3 # means the value is present. We can adjust the importance of the correct value selection by changing this number
             try:
                 output[i, j * 2 + 1] = data[k]["values"][key]
             except FloatingPointError as someEx:
@@ -146,10 +186,9 @@ seqs_train = np.zeros(
     dtype=np.int8,
 )
 # initialize output_test and output_train to the size they will have
-output_test = np.zeros((len(testpdb_names), len(useable_keys) * 2), dtype=np.float16)
+output_test = np.zeros((len(testpdb_names), len(useable_keys) * 2))
 output_train = np.zeros(
-    (len(pdb_names) - len(testpdb_names), len(useable_keys) * 2), dtype=np.float16
-)
+    (len(pdb_names) - len(testpdb_names), len(useable_keys) * 2))
 
 for i, pdb in tqdm(list(enumerate(pdb_names))):
     if pdb in testpdb_names:

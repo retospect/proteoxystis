@@ -38,6 +38,9 @@ def parse_commandline():
     # just do testing
     parser.add_argument("--test", action="store_true", help="just test the model")
 
+    # picks two random entries from the test set and shows them
+    parser.add_argument("--rpredict", action="store_true", help="random prediction, show two random entries from the test set")
+
     # number of training epochs, default 10
     parser.add_argument(
         "--epochs", type=int, default=10000, help="number of training epochs"
@@ -87,27 +90,30 @@ def find_torch_training_device():
     if torch.cuda.is_available():
         print("Using CUDA")
         return torch.device("cuda")
-    # elif torch.backends.mps.is_available():
+    #elif torch.backends.mps.is_available():
     #    print("Using MPS")
     #    return torch.device("mps")
     else:
         print("Using CPU")
         return torch.device("cpu")
 
+def append_to_model(model, n_input, n_output, layers, relu_spacing):
+    model.append(nn.Linear(n_input, n_output))
+    model.append(nn.ReLU())
+    for i in range(layers):
+        model.append(nn.Linear(n_output, n_output))
+        if i % relu_spacing == 0:
+            model.append(nn.ReLU())
+    return model
 
 def setup_model(seqs, output):
     # Setup model
-    N = 1000  # num_samples_per_class
     D = seqs.shape[1]  # num_features
-    C = output.shape[1]  # num_classes
-    H = 60  # num_hidden_units
-    inner_count = 30
-    model = nn.Sequential(nn.Linear(D, H))
-    model.append(nn.ReLU())
-    for i in range(inner_count):
-        model.append(nn.Linear(H, H))
-        model.append(nn.ReLU())
-    model.append(nn.Linear(H, C))
+    C = output.shape[1]  # num_output_values
+    model = nn.Sequential(nn.Linear(D, 64))
+    model = append_to_model(model, 64, 32, 20, 10)
+    model = append_to_model(model, 32, 64, 1, 3)
+    model.append(nn.Linear(64, C))
     model.to(find_torch_training_device())
     return model
 
@@ -138,11 +144,11 @@ def train(model, seqs, output, training_epochs):
         if loss.item() < prev_loss:
             best_model = copy.deepcopy(model)
             prev_loss = loss.item()
-            if epoch - prev_save_epoch > 100:  # reduce for excessive saving
+            if epoch - prev_save_epoch > 5:  # reduce for excessive saving
                 prev_save_epoch = epoch
                 torch.save(model, "model.pt")
         print(
-            "Epoch: {:d}({:d}) Loss: {:10.2f} Best: {:10.2f}            ".format(
+            "Epoch: {:d}({:d}) Loss: {:4.4f} Best: {:4.4f}            ".format(
                 epoch, prev_save_epoch, loss.item(), prev_loss
             ),
             end="\r",
@@ -200,8 +206,8 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
     # Run the in_data thru the model
     output_pred = model(in_data)
 
-    pred_hash = get_active_values(output_pred, metadata["sig_keys"])
-    actual_hash = get_active_values(out_data, metadata["sig_keys"])
+    pred_hash = get_active_values(output_pred, metadata["sig_keys"], metadata['correction_factor'])
+    actual_hash = get_active_values(out_data, metadata["sig_keys"], metadata['correction_factor'])
 
     # Print pred_hash and the actual hash as a table
     # Combine the keys of the two hashes and use them as the first column
@@ -221,15 +227,18 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
         predicted_value = pred_hash.get(k, -1)
 
         if actual_value == -1:
-            delta = "{:12s}".format("missing")
-        elif predicted_value == -1:
             delta = "{:12s}".format("excess")
+            pct = ""
+        elif predicted_value == -1:
+            delta = "{:12s}".format("missing")
+            pct = ""
         else:
             delta = "{:12.2f}".format(predicted_value - actual_value)
+            pct = "{:12.2f}%".format((predicted_value - actual_value) / actual_value * 100)
         # print the row
         print(
-            "{:19s} {:10.2f} {:10.2f} {}".format(
-                k, actual_value, predicted_value, delta
+            "{:19s} {:10.2f} {:10.2f} {} {}".format(
+                k, actual_value, predicted_value, delta, pct
             )
         )
 
@@ -245,8 +254,10 @@ def main():
         model = setup_model(seqs, output)
     if args.model:
         print(model)
+    
+    testing = args.test or args.rpredict or args.rpredict
 
-    if not args.test and None == args.predict:
+    if not testing: 
         train(model, seqs, output, args.epochs)
 
     test(model, seqs_test, output_test)
@@ -254,7 +265,10 @@ def main():
     if args.predict != None:
         print("Predicting", args.predict)
         predict(model, metadata, seqs, output, seqs_test, output_test, args.predict)
-
+    if args.rpredict:
+        # pick two test records at random
+        for pdbid in random.sample(metadata["pdb_names_test"], 2):
+            predict(model, metadata, seqs, output, seqs_test, output_test, pdbid)
 
 if __name__ == "__main__":
     main()
