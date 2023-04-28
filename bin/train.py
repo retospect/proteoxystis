@@ -40,6 +40,9 @@ def parse_commandline():
     # just do testing
     parser.add_argument("--test", action="store_true", help="just test the model")
 
+    # make a new model, overwrite existing one
+    parser.add_argument("--new", action="store_true", help="make a new model")
+
     # picks two random entries from the test set and shows them
     parser.add_argument(
         "--rpredict",
@@ -116,14 +119,16 @@ def append_to_model(model, n_input, n_output, layers, relu_spacing):
 
 
 def setup_model(seqs, output):
-    # Setup model
+    # Setup model, model definition
+    print("Setting up new model (will overwrite the old if it exists)...", end="", flush=True)
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
     model = nn.Sequential(nn.Linear(D, 128))
-    model = append_to_model(model, 128, 24, 10, 3)
-    model = append_to_model(model, 24, 128, 3, 2)
+    model = append_to_model(model, 128, 46, 120, 10)
+    model = append_to_model(model, 46, 128, 3, 2)
     model.append(nn.Linear(128, C))
     model.to(find_torch_training_device())
+    print("done")
     return model
 
 
@@ -307,9 +312,11 @@ def main():
     metadata, seqs, output, seqs_test, output_test = load_data()
     args = parse_commandline()
     init_seeds(42)
-    if args.preload:
-        print("Preloading model from", args.preload)
+    find_torch_training_device() # get message out and cache updated
+    if args.preload and not args.new:
+        print("Preloading model from", args.preload, "...", end="")
         model = torch.load(args.preload)
+        print("done")
     else:
         model = setup_model(seqs, output)
     if args.model:
