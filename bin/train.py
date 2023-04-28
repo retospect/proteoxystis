@@ -36,7 +36,7 @@ def parse_commandline():
         help="preload a model from this model file",
     )
 
-    default_epochs = 10000
+    default_epochs = 500
     # just do testing
     parser.add_argument("--test", action="store_true", help="just test the model")
 
@@ -49,7 +49,7 @@ def parse_commandline():
 
     # number of training epochs, default 10
     parser.add_argument(
-        "--epochs", type=int, default=10000, help="number of training epochs"
+        "--epochs", type=int, default=default_epochs, help="number of training epochs"
     )
 
     # predict a pdb entry by pdbid
@@ -119,10 +119,9 @@ def setup_model(seqs, output):
     # Setup model
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
-    model = nn.Sequential(nn.Linear(D, 1024))
-    model = append_to_model(model, 1024, 128, 3, 1)
-    model = append_to_model(model, 128, 32, 120, 5)
-    model = append_to_model(model, 32, 128, 2, 1)
+    model = nn.Sequential(nn.Linear(D, 128))
+    model = append_to_model(model, 128, 24, 10, 3)
+    model = append_to_model(model, 24, 128, 3, 2)
     model.append(nn.Linear(128, C))
     model.to(find_torch_training_device())
     return model
