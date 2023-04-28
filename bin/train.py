@@ -162,6 +162,7 @@ def train(model, seqs, output, training_epochs):
     last_save_time = time.time()
     waiting_time = 60
     print("Training, saving every {:0.0f} seconds...".format(waiting_time))
+    print("Using {:0.0f} threads".format(torch.get_num_threads()))
     print("E:(Epoch) SE:(Saved Epoch)@L:(Saved Loss) L:(Current loss) P:(Epoch 0 Loss)")
     prog = tqdm(range(training_epochs))
     for epoch in prog:
