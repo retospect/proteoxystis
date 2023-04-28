@@ -12,3 +12,4 @@ bin/data
 bin/tidy.err
 ***.pickle
 ***sig_keys.csv
+***model.pt
