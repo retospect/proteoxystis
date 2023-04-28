@@ -129,12 +129,17 @@ output = np.zeros(
 print("Output array size (pdb x one-hot output): ", output.shape)
 print("Filling output array")
 np.seterr(all="raise")
+
+# the magic number for "this category is present"
+# increase for more category fit
+metadata["category_is_present_magic_number"] = 20
+
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
         if key in data[k]["values"].keys():
             output[
                 i, j * 2
-            ] = 3  # means the value is present. We can adjust the importance of the correct value selection by changing this number
+            ] = metadata["category_is_present_magic_number"]  
             try:
                 output[i, j * 2 + 1] = data[k]["values"][key]
             except FloatingPointError as someEx:

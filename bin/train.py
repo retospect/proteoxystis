@@ -241,11 +241,13 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
     # Run the in_data thru the model
     output_pred = model(in_data)
 
+    # magic treshhold
+    magic_treshhold = metadata["category_is_present_magic_number"]/5
     (pred_hash, pred_conf) = get_active_values(
-        output_pred, metadata["sig_keys"], metadata["correction_factor"]
+        output_pred, metadata["sig_keys"], metadata["correction_factor"], magic_treshhold
     )
     (actual_hash, actual_conf) = get_active_values(
-        out_data, metadata["sig_keys"], metadata["correction_factor"]
+        out_data, metadata["sig_keys"], metadata["correction_factor"], magic_treshhold
     )
 
     # Print pred_hash and the actual hash as a table
