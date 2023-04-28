@@ -1,6 +1,7 @@
 #! python
 from tqdm import tqdm
 import time
+import gzip
 import pickle
 import numpy as np
 import torch
@@ -66,7 +67,8 @@ def parse_commandline():
 
 
 def load_data():
-    print("Loading data...", end="")
+    print("Loading data...", end="", flush=True)
+    # gzip the pickle is possible but way slow
     with open("training_data.pickle", "rb") as f:
         metadata, seqs, output, seqs_test, output_test = pickle.load(f)
     print("done")
@@ -133,14 +135,24 @@ def train(model, seqs, output, training_epochs):
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # Train
-    print("Unpickling data...")
-    in_data = torch.from_numpy(seqs).float().to(find_torch_training_device())
-    out_data = torch.from_numpy(output).float().to(find_torch_training_device())
+    dev = find_torch_training_device()
+    print("Sending data to device...", end="", flush=True)
+    in_data = torch.from_numpy(seqs).float().to(dev)
+    out_data = torch.from_numpy(output).float().to(dev)
+
+    # Pytorch pickling takes a lot longer than numpy pickling done this way.
+    # Speed is good.
+    # in_data = seqs
+    # out_data = output
+    # in_data = seqs.to(find_torch_training_device())
+    # out_data = output.to(find_torch_training_device())
+    print("done")
     best_model = model
     # calculate current model loss
-    print("Running model first time...")
+    print("Running model first time...", end="", flush=True)
     output_pred = model(in_data)
     prev_loss = criterion(output_pred, out_data).item()
+    print("done")
     initial_loss = prev_loss
     best_loss = prev_loss
     saved_epoch = 0
@@ -149,7 +161,7 @@ def train(model, seqs, output, training_epochs):
     current_loss = 0
     prev_save_epoch = 0
     last_save_time = time.time()
-    waiting_time = 60 
+    waiting_time = 60
     print("Training, saving every {:0.0f} seconds...".format(waiting_time))
     print("E:(Epoch) SE:(Saved Epoch)@L:(Saved Loss) L:(Current loss) P:(Epoch 0 Loss)")
     prog = tqdm(range(training_epochs))
@@ -246,7 +258,11 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
 
     print("Delta for PDBID:", pdbid)
     # Print the headers
-    print("{:19s} {:>10s} {:>10s} {:>10s} {:>10s}".format("KEY", "ACTUAL", "PREDICTED", "DELTA", "PCT", "CLASS_CONF"))
+    print(
+        "{:19s} {:>10s} {:>10s} {:>10s} {:>10s}".format(
+            "KEY", "ACTUAL", "PREDICTED", "DELTA", "PCT", "CLASS_CONF"
+        )
+    )
 
     for k in all_keys:
         # get the value from the actual hash or - if it does not exist
@@ -267,15 +283,19 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
                 (predicted_value - actual_value) / actual_value * 100
             )
         if actual_value == -1:
-            actual_value_str= "{:>10s}".format("----")
+            actual_value_str = "{:>10s}".format("----")
         if predicted_value == -1:
-            predicted_value_str= "{:>10s}".format("----")
+            predicted_value_str = "{:>10s}".format("----")
         # print the row
         # get the predicted confidence for the k value
         if not k in pred_conf:
-            pred_conf[k] = -1 # actually we'll have to fix this later, and look it up. It's all there.
+            pred_conf[
+                k
+            ] = (
+                -1
+            )  # actually we'll have to fix this later, and look it up. It's all there.
         print(
-                "{:19s} {} {} {} {} {:12.2f}".format(
+            "{:19s} {} {} {} {} {:12.2f}".format(
                 k, actual_value_str, predicted_value_str, delta, pct, pred_conf[k]
             )
         )

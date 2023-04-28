@@ -5,6 +5,8 @@
 import pickle, os
 import toml
 from tqdm import tqdm
+import torch
+import gzip
 import numpy as np
 
 # read the toml file
@@ -206,11 +208,22 @@ for i, pdb in tqdm(list(enumerate(pdb_names))):
 print("Test data size: ", seqs_test.shape)
 print("Training data size: ", seqs_train.shape)
 
+# convert seqs_test, seqs_train, output_test and output_train to pytorch tensors
+# (But storing the pytorch tensor in the pickle is maddening slow)
+if False:
+    print("Converting to pytorch tensors")
+    seqs_test = torch.from_numpy(seqs_test).float()
+    seqs_train = torch.from_numpy(seqs_train).float()
+    output_test = torch.from_numpy(output_test).float()
+    output_train = torch.from_numpy(output_train).float()
+
+
 metadata["pdb_names_test"] = pdb_names_test
 metadata["pdb_names_train"] = pdb_names_train
 
 # pickle the data
 print("Pickeling data")
+# gzip makes this way slow?
 with open("training_data.pickle", "wb") as f:
     pickle.dump(
         (
