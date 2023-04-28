@@ -36,7 +36,13 @@ ph                        6.50       5.75        -0.75
 Tools, in order of dataflow path. 
 (todo, add mermaid diagram or something)
 
-### pdbfetch.py - Pulls data from PDB [runs in 15min]
+TLDR:
+- extract.py - pulls all data form PDB files (if you have pdb files) -> pdb.toml.gz
+- tidy.py - parses pdb.toml.gz, extracts chemistry words etc -> training.toml
+- pickelize.py - parses training.toml, normalizes and vectorizes data, training/test split, metadata -> training_data.pickle
+- train.py - makes model and tests it and makes predictions
+
+### extract.py - Pulls data from PDB [runs in 15min]
 We've pre-extracted all the text we are likely to need into the ```pdb.toml.gz``` file. So the processing can start from that file. See the "Pulling all the PDB files" section below.
 It also generates pdb.error.gz file with all the current errors to be improved.
 

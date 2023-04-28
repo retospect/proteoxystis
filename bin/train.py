@@ -118,11 +118,17 @@ def append_to_model(model, n_input, n_output, layers, relu_spacing):
     return model
 
 
-def setup_model(seqs, output):
+def setup_model(seqs, output, metadata):
     # Setup model, model definition
     print("Setting up new model (will overwrite the old if it exists)...", end="", flush=True)
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
+    # input with a 1d convolutional network, for the whole list (lenght D).
+    # the step size is a multiple of the aminoacid encoding
+    amino_acid_encoding_length = len(metadata["aminoacids"])
+    # TODO: Convolutional 1d network with a window size of the aminoacid encoding length or a multiple
+    #model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
+
     model = nn.Sequential(nn.Linear(D, 128))
     model = append_to_model(model, 128, 46, 120, 10)
     model = append_to_model(model, 46, 128, 3, 2)
@@ -318,7 +324,7 @@ def main():
         model = torch.load(args.preload)
         print("done")
     else:
-        model = setup_model(seqs, output)
+        model = setup_model(seqs, output, metadata)
     if args.model:
         print(model)
 
