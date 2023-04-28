@@ -1,5 +1,6 @@
 #! python
 from tqdm import tqdm
+import time
 import pickle
 import numpy as np
 import torch
@@ -116,9 +117,9 @@ def setup_model(seqs, output):
     # Setup model
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
-    model = nn.Sequential(nn.Linear(D, 512))
-    model = append_to_model(model, 512, 128, 1, 1)
-    model = append_to_model(model, 128, 32, 35, 10)
+    model = nn.Sequential(nn.Linear(D, 1024))
+    model = append_to_model(model, 1024, 128, 3, 1)
+    model = append_to_model(model, 128, 32, 120, 5)
     model = append_to_model(model, 32, 128, 2, 1)
     model.append(nn.Linear(128, C))
     model.to(find_torch_training_device())
@@ -137,19 +138,25 @@ def train(model, seqs, output, training_epochs):
     out_data = torch.from_numpy(output).float().to(find_torch_training_device())
     best_model = model
     # calculate current model loss
+    print("Running model first time...")
     output_pred = model(in_data)
     prev_loss = criterion(output_pred, out_data).item()
-    prog = tqdm(range(training_epochs))
+    initial_loss = prev_loss
+    best_loss = prev_loss
     saved_epoch = 0
     saved_model = 0
-    saved_loss = 0
+    saved_loss = best_loss
     current_loss = 0
     prev_save_epoch = 0
-    print("Training...", end="")
+    last_save_time = time.time()
+    waiting_time = 60 
+    print("Training, saving every {:0.0f} seconds...".format(waiting_time))
+    print("E:(Epoch) SE:(Saved Epoch)@L:(Saved Loss) L:(Current loss) P:(Epoch 0 Loss)")
+    prog = tqdm(range(training_epochs))
     for epoch in prog:
         prog.set_description(
-            "E:{:0.0f} SE:{:0.0f}@L:{:0.5f} L:{:0.5f}".format(
-                epoch, saved_epoch, saved_loss, current_loss
+            "E:{:0.0f} SE:{:0.0f}@L:{:0.5f}>L:{:0.5f}<P:{:0.5f}".format(
+                epoch, saved_epoch, saved_loss, current_loss, initial_loss
             )
         )
         optimizer.zero_grad()
@@ -163,11 +170,13 @@ def train(model, seqs, output, training_epochs):
             best_model = copy.deepcopy(model)
             best_loss = loss.item()
             best_epoch = epoch
-        if epoch - prev_save_epoch > 25:  # reduce for excessive saving
+        # Save model if more than 1 minute have passed and it is now better
+        if time.time() - last_save_time > waiting_time and best_loss < saved_loss:
             saved_epoch = best_epoch
             torch.save(best_model, "model.pt")
             saved_loss = best_loss
             prev_save_epoch = epoch
+            last_save_time = time.time()
 
     print("done")
     return best_model
@@ -221,10 +230,10 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
     # Run the in_data thru the model
     output_pred = model(in_data)
 
-    pred_hash = get_active_values(
+    (pred_hash, pred_conf) = get_active_values(
         output_pred, metadata["sig_keys"], metadata["correction_factor"]
     )
-    actual_hash = get_active_values(
+    (actual_hash, actual_conf) = get_active_values(
         out_data, metadata["sig_keys"], metadata["correction_factor"]
     )
 
@@ -237,29 +246,37 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
 
     print("Delta for PDBID:", pdbid)
     # Print the headers
-    print("{:19s} {:10s} {:10s} {:10s}".format("key", "actual", "predicted", "delta"))
+    print("{:19s} {:>10s} {:>10s} {:>10s} {:>10s}".format("KEY", "ACTUAL", "PREDICTED", "DELTA", "PCT", "CLASS_CONF"))
 
     for k in all_keys:
         # get the value from the actual hash or - if it does not exist
         actual_value = actual_hash.get(k, -1)
         # get the value from the predicted hash or - if it does not exist
         predicted_value = pred_hash.get(k, -1)
+        actual_value_str = "{:10.2f}".format(actual_value)
+        predicted_value_str = "{:10.2f}".format(predicted_value)
 
+        pct = "{:>7s}%".format("----")
         if actual_value == -1:
-            delta = "{:12s}".format("excess")
-            pct = ""
+            delta = "{:>12s}".format("excess")
         elif predicted_value == -1:
-            delta = "{:12s}".format("missing")
-            pct = ""
+            delta = "{:>12s}".format("missing")
         else:
             delta = "{:12.2f}".format(predicted_value - actual_value)
-            pct = "{:12.2f}%".format(
+            pct = "{:7.2f}%".format(
                 (predicted_value - actual_value) / actual_value * 100
             )
+        if actual_value == -1:
+            actual_value_str= "{:>10s}".format("----")
+        if predicted_value == -1:
+            predicted_value_str= "{:>10s}".format("----")
         # print the row
+        # get the predicted confidence for the k value
+        if not k in pred_conf:
+            pred_conf[k] = -1 # actually we'll have to fix this later, and look it up. It's all there.
         print(
-            "{:19s} {:10.2f} {:10.2f} {} {}".format(
-                k, actual_value, predicted_value, delta, pct
+                "{:19s} {} {} {} {} {:12.2f}".format(
+                k, actual_value_str, predicted_value_str, delta, pct, pred_conf[k]
             )
         )
 
