@@ -315,6 +315,7 @@ def predict(
             .float()
             .to(find_torch_training_device())
         )
+        print("From test set.")
     if pdbid in metadata["pdb_names_train"]:
         index = metadata["pdb_names_train"].index(pdbid)
         in_data = (
@@ -330,6 +331,7 @@ def predict(
             .float()
             .to(find_torch_training_device())
         )
+        print("From training set.")
 
     # Run the in_data thru the model
     output_pred = model(in_data)
@@ -352,6 +354,8 @@ def predict(
     # The second column is the actual value output
     # The third column is the predicted output
     # The fourth column is the difference between the predicted and actual output
+    
+    (all_preds, all_probs) = get_active_values(output_pred, metadata["sig_keys"], metadata["correction_factor"], -10000)
 
     print("Delta for PDBID:", pdbid)
     # Print the headers
@@ -366,17 +370,21 @@ def predict(
         actual_value = actual_hash.get(k, -1)
         # get the value from the predicted hash or - if it does not exist
         predicted_value = pred_hash.get(k, -1)
-        actual_value_str = "{:10.2f}".format(actual_value)
-        predicted_value_str = "{:10.2f}".format(predicted_value)
 
         pct = "{:>7s}%".format("----")
+        state = "OK"
         if actual_value == -1:
-            delta = "{:>12s}".format("excess")
+            state= "excess"
         elif predicted_value == -1:
-            delta = "{:>12s}".format("missing")
-        else:
-            delta = "{:12.2f}".format(predicted_value - actual_value)
-            pct = "{:7.2f}%".format(
+            state = "missing"
+
+        predicted_value = all_preds.get(k, -1)
+        predicted_prob = all_probs.get(k, -1)
+
+        actual_value_str = "{:10.2f}".format(actual_value)
+        predicted_value_str = "{:10.2f}".format(predicted_value)
+        delta = "{:12.2f}".format(predicted_value - actual_value)
+        pct = "{:7.2f}%".format(
                 (predicted_value - actual_value) / actual_value * 100
             )
         if actual_value == -1:
@@ -393,8 +401,8 @@ def predict(
             )  # actually we'll have to fix this later, and look it up. It's all there.
         print(
             "{:19s} {} {} {} {} {:12.2f}".format(
-                k, actual_value_str, predicted_value_str, delta, pct, pred_conf[k]
-            )
+                k, actual_value_str, predicted_value_str, delta, pct, predicted_prob
+            ), state
         )
 
 
