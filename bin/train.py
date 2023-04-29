@@ -354,13 +354,15 @@ def predict(
     # The second column is the actual value output
     # The third column is the predicted output
     # The fourth column is the difference between the predicted and actual output
-    
-    (all_preds, all_probs) = get_active_values(output_pred, metadata["sig_keys"], metadata["correction_factor"], -10000)
+
+    (all_preds, all_probs) = get_active_values(
+        output_pred, metadata["sig_keys"], metadata["correction_factor"], -10000
+    )
 
     print("Delta for PDBID:", pdbid)
     # Print the headers
     print(
-            "{:>25s} {:>10s} {:>10s} {:>10s} {:>8s} {:8s} OK?".format(
+        "{:>25s} {:>10s} {:>10s} {:>10s} {:>8s} {:8s} OK?".format(
             "KEY", "ACTUAL", "PREDICTED", "DELTA", "PCT", "CLASS_CONF"
         )
     )
@@ -374,7 +376,7 @@ def predict(
         pct = "{:>7s}%".format("----")
         state = "OK"
         if actual_value == -1:
-            state= "excess"
+            state = "excess"
         elif predicted_value == -1:
             state = "missing"
 
@@ -384,10 +386,8 @@ def predict(
         actual_value_str = "{:10.2f}".format(actual_value)
         predicted_value_str = "{:10.2f}".format(predicted_value)
         delta = "{:10.2f}".format(predicted_value - actual_value)
-        pct = "{:7.2f}%".format(
-                (predicted_value - actual_value) / actual_value * 100
-            )
-        if state is "excess":
+        pct = "{:7.2f}%".format((predicted_value - actual_value) / actual_value * 100)
+        if state == "excess":
             delta = "{:>10s}".format("-.--")
             pct = "{:>7s}%".format("-.--")
         if actual_value == -1:
@@ -405,7 +405,8 @@ def predict(
         print(
             "{:>25s} {} {} {} {} {:10.2f}".format(
                 k, actual_value_str, predicted_value_str, delta, pct, predicted_prob
-            ), state
+            ),
+            state,
         )
 
 
