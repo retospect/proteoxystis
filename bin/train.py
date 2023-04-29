@@ -360,7 +360,7 @@ def predict(
     print("Delta for PDBID:", pdbid)
     # Print the headers
     print(
-        "{:19s} {:>10s} {:>10s} {:>10s} {:>10s}".format(
+            "{:>25s} {:>10s} {:>10s} {:>10s} {:>8s} {:8s} OK?".format(
             "KEY", "ACTUAL", "PREDICTED", "DELTA", "PCT", "CLASS_CONF"
         )
     )
@@ -383,10 +383,13 @@ def predict(
 
         actual_value_str = "{:10.2f}".format(actual_value)
         predicted_value_str = "{:10.2f}".format(predicted_value)
-        delta = "{:12.2f}".format(predicted_value - actual_value)
+        delta = "{:10.2f}".format(predicted_value - actual_value)
         pct = "{:7.2f}%".format(
                 (predicted_value - actual_value) / actual_value * 100
             )
+        if state is "excess":
+            delta = "{:>10s}".format("-.--")
+            pct = "{:>7s}%".format("-.--")
         if actual_value == -1:
             actual_value_str = "{:>10s}".format("----")
         if predicted_value == -1:
@@ -400,7 +403,7 @@ def predict(
                 -1
             )  # actually we'll have to fix this later, and look it up. It's all there.
         print(
-            "{:19s} {} {} {} {} {:12.2f}".format(
+            "{:>25s} {} {} {} {} {:10.2f}".format(
                 k, actual_value_str, predicted_value_str, delta, pct, predicted_prob
             ), state
         )
