@@ -137,9 +137,7 @@ metadata["category_is_present_magic_number"] = 20
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
         if key in data[k]["values"].keys():
-            output[
-                i, j * 2
-            ] = metadata["category_is_present_magic_number"]  
+            output[i, j * 2] = metadata["category_is_present_magic_number"]
             try:
                 output[i, j * 2 + 1] = data[k]["values"][key]
             except FloatingPointError as someEx:

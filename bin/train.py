@@ -40,6 +40,11 @@ def parse_commandline():
     # just do testing
     parser.add_argument("--test", action="store_true", help="just test the model")
 
+    # provide a seed for the random number generator
+    parser.add_argument(
+        "--seed", type=int, default=42, help="seed for the random number generator"
+    )
+
     # make a new model, overwrite existing one
     parser.add_argument("--new", action="store_true", help="make a new model")
 
@@ -120,27 +125,65 @@ def append_to_model(model, n_input, n_output, layers, relu_spacing):
 
 def setup_model(seqs, output, metadata):
     # Setup model, model definition
-    print("Setting up new model (will overwrite the old if it exists)...", end="", flush=True)
+    print(
+        "Setting up new model (will overwrite the old if it exists)...",
+        end="",
+        flush=True,
+    )
     D = seqs.shape[1]  # num_features
     C = output.shape[1]  # num_output_values
     # input with a 1d convolutional network, for the whole list (lenght D).
     # the step size is a multiple of the aminoacid encoding
     amino_acid_encoding_length = len(metadata["aminoacids"])
     # TODO: Convolutional 1d network with a window size of the aminoacid encoding length or a multiple
-    #model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
+    # model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
 
-    model = nn.Sequential(nn.Linear(D, 128))
-    model = append_to_model(model, 128, 46, 120, 10)
-    model = append_to_model(model, 46, 128, 3, 2)
-    model.append(nn.Linear(128, C))
+    model = nn.Sequential(nn.Linear(D, 512))
+    model = append_to_model(model, 512, 128, 2, 1)
+    model = append_to_model(model, 128, 32, 100, 10)
+    model = append_to_model(model, 32, 200, 5, 3)
+    model.append(nn.Linear(200, C))
+
     model.to(find_torch_training_device())
     print("done")
     return model
 
 
+class custom_loss(nn.Module):
+    # Takes the output of the model and masks every second value
+    def __init__(self):
+        super(custom_loss, self).__init__()
+
+    def forward(self, output, target):
+        # output is the output of the model
+        # target is the target values
+        # output and target are both torch tensors
+        # if the target value is > 1 in an odd position, mask the following even position in the output
+        # otherwise, leave the evn position alone
+        # return the mean squared error of the masked output and target
+        treshhold = 1
+        # This should be matrixified
+        # get new tensor with only the odd positions
+        # mask the even positions
+        nTarget = torch.zeros(target.shape[0], target.shape[1])
+        # put ones in all even columns
+        nTarget[:,] = 1
+
+        cost = 0
+        aTarget = target.shape[0]
+        bTarget = target.shape[1] // 2
+        # for a in tqdm(range(aTarget)):
+        #    for i in r:ange(bTarget):
+        #        cost += (output[a][2*i] - target[a][2*i])**2 # Classification loss
+        #        if target[a][2*i] > treshhold: # Cost of feature loss
+        #            cost += (output[a][2*i+1] - target[a][2*i+1])**2
+        return cost
+
+
 def train(model, seqs, output, training_epochs):
     # Setup training
     criterion = nn.MSELoss()
+    # criterion = custom_loss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
@@ -218,9 +261,11 @@ def test(model, seqs_test, output_test):
 
 
 def init_seeds(seed):
+    print("Setting seeds to", seed, "...", end="", flush=True)
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+    print("done")
 
 
 # Runs the model on one particular record extracted from the pdb database
@@ -254,9 +299,12 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
     output_pred = model(in_data)
 
     # magic treshhold
-    magic_treshhold = metadata["category_is_present_magic_number"]/5
+    magic_treshhold = metadata["category_is_present_magic_number"] / 5
     (pred_hash, pred_conf) = get_active_values(
-        output_pred, metadata["sig_keys"], metadata["correction_factor"], magic_treshhold
+        output_pred,
+        metadata["sig_keys"],
+        metadata["correction_factor"],
+        magic_treshhold,
     )
     (actual_hash, actual_conf) = get_active_values(
         out_data, metadata["sig_keys"], metadata["correction_factor"], magic_treshhold
@@ -317,8 +365,9 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
 def main():
     metadata, seqs, output, seqs_test, output_test = load_data()
     args = parse_commandline()
-    init_seeds(42)
-    find_torch_training_device() # get message out and cache updated
+    if not args.rpredict or args.predict:
+        init_seeds(args.seed)
+    find_torch_training_device()  # get message out and cache updated
     if args.preload and not args.new:
         print("Preloading model from", args.preload, "...", end="")
         model = torch.load(args.preload)
