@@ -78,7 +78,15 @@ def load_data():
     print("Loading data...", end="", flush=True)
     # gzip the pickle is possible but way slow
     with open("training_data.pickle", "rb") as f:
-        metadata, seqs, output, seqs_test, output_test = pickle.load(f)
+        (
+            metadata,
+            seqs,
+            output,
+            seqs_test,
+            output_test,
+            relevant_test,
+            relevant_train,
+        ) = pickle.load(f)
     print("done")
 
     # Data structure:
@@ -96,7 +104,7 @@ def load_data():
     # Print shapes of seqs and output
     print("seqs.shape:   ", seqs.shape)
     print("output.shape: ", output.shape)
-    return metadata, seqs, output, seqs_test, output_test
+    return metadata, seqs, output, seqs_test, output_test, relevant_test, relevant_train
 
 
 # use caching for this method
@@ -180,7 +188,7 @@ class custom_loss(nn.Module):
         return cost
 
 
-def train(model, seqs, output, training_epochs):
+def train(model, seqs, output, training_epochs, relevance):
     # Setup training
     criterion = nn.MSELoss()
     # criterion = custom_loss()
@@ -192,6 +200,7 @@ def train(model, seqs, output, training_epochs):
     print("Sending data to device...", end="", flush=True)
     in_data = torch.from_numpy(seqs).float().to(dev)
     out_data = torch.from_numpy(output).float().to(dev)
+    relevance = torch.from_numpy(relevance).float().to(dev)
 
     # Pytorch pickling takes a lot longer than numpy pickling done this way.
     # Speed is good.
@@ -227,6 +236,9 @@ def train(model, seqs, output, training_epochs):
         )
         optimizer.zero_grad()
         output_pred = model(in_data)
+        output_pred = (
+            relevance * output_pred
+        )  # Blank out all fields we don't care about - the values that have not been reported in the original data and are not in the dataset. These can be anything
         loss = criterion(output_pred, out_data)
         current_loss = loss.item()
         loss.backward()
@@ -248,13 +260,17 @@ def train(model, seqs, output, training_epochs):
     return best_model
 
 
-def test(model, seqs_test, output_test):
+def test(model, seqs_test, output_test, relevance):
     # Test
     print("Testing...", end="")
     in_data = torch.from_numpy(seqs_test).float().to(find_torch_training_device())
     out_data = torch.from_numpy(output_test).float().to(find_torch_training_device())
+    relevance = torch.from_numpy(relevance).float().to(find_torch_training_device())
     criterion = nn.MSELoss()
     output_pred = model(in_data)
+    output_pred = (
+        relevance * output_pred
+    )  # Blank out all fields we don't care about - the values that have not been reported in the original data and are not in the dataset. These can be anything
     loss = criterion(output_pred, out_data)
     print("done")
     print("Test loss:", loss.item())
@@ -269,7 +285,17 @@ def init_seeds(seed):
 
 
 # Runs the model on one particular record extracted from the pdb database
-def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, pdbid):
+def predict(
+    model,
+    metadata,
+    seqs_train,
+    output_train,
+    seqs_test,
+    output_test,
+    pdbid,
+    relevant_train,
+    relevant_test,
+):
     # find the encoded input and output of the pdb in either the training or the test set
     # is it in the training set?
 
@@ -284,6 +310,11 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
             .float()
             .to(find_torch_training_device())
         )
+        relevance = (
+            torch.from_numpy(relevant_test[index])
+            .float()
+            .to(find_torch_training_device())
+        )
     if pdbid in metadata["pdb_names_train"]:
         index = metadata["pdb_names_train"].index(pdbid)
         in_data = (
@@ -291,6 +322,11 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
         )
         out_data = (
             torch.from_numpy(output_train[index])
+            .float()
+            .to(find_torch_training_device())
+        )
+        relevance = (
+            torch.from_numpy(relevant_train[index])
             .float()
             .to(find_torch_training_device())
         )
@@ -363,7 +399,15 @@ def predict(model, metadata, seqs_train, output_train, seqs_test, output_test, p
 
 
 def main():
-    metadata, seqs, output, seqs_test, output_test = load_data()
+    (
+        metadata,
+        seqs,
+        output,
+        seqs_test,
+        output_test,
+        relevant_train,
+        relevant_test,
+    ) = load_data()
     args = parse_commandline()
     if not args.rpredict or args.predict:
         init_seeds(args.seed)
@@ -380,17 +424,37 @@ def main():
     testing = args.test or args.rpredict or args.rpredict
 
     if not testing:
-        train(model, seqs, output, args.epochs)
+        train(model, seqs, output, args.epochs, relevant_train)
 
-    test(model, seqs_test, output_test)
+    test(model, seqs_test, output_test, relevant_test)
 
     if args.predict != None:
         print("Predicting", args.predict)
-        predict(model, metadata, seqs, output, seqs_test, output_test, args.predict)
+        predict(
+            model,
+            metadata,
+            seqs,
+            output,
+            seqs_test,
+            output_test,
+            args.predict,
+            relevant_train,
+            relevant_test,
+        )
     if args.rpredict:
         # pick two test records at random
         for pdbid in random.sample(metadata["pdb_names_test"], 2):
-            predict(model, metadata, seqs, output, seqs_test, output_test, pdbid)
+            predict(
+                model,
+                metadata,
+                seqs,
+                output,
+                seqs_test,
+                output_test,
+                pdbid,
+                relevant_train,
+                relevant_test,
+            )
 
 
 if __name__ == "__main__":

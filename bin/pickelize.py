@@ -130,6 +130,13 @@ print("Output array size (pdb x one-hot output): ", output.shape)
 print("Filling output array")
 np.seterr(all="raise")
 
+# The relevant values array is used to mask out the values that are not interesting in the output
+# Every odd row should have a 1. Because that's the categorization output.
+# Also, every even row where we have a value should have a 1. Because that's the value output
+relevant_values = np.zeros((len(pdb_names), len(useable_keys) * 2))
+for i in range(len(useable_keys)):
+    relevant_values[:, i * 2] = 1
+
 # the magic number for "this category is present"
 # increase for more category fit
 metadata["category_is_present_magic_number"] = 20
@@ -138,6 +145,9 @@ for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
         if key in data[k]["values"].keys():
             output[i, j * 2] = metadata["category_is_present_magic_number"]
+            relevant_values[
+                i, j * 2 + 1
+            ] = 1  # This value is relevant, don't mask it out.
             try:
                 output[i, j * 2 + 1] = data[k]["values"][key]
             except FloatingPointError as someEx:
@@ -147,6 +157,7 @@ for i, k in tqdm(list(enumerate(pdb_names))):
                 print(someEx)
                 print(data[k]["values"][key])
                 output[i, j * 2 + 1] = np.finfo(np.half).max
+
         else:
             output[i, j * 2] = 0
             output[i, j * 2 + 1] = 0
@@ -198,15 +209,23 @@ seqs_train = np.zeros(
 output_test = np.zeros((len(testpdb_names), len(useable_keys) * 2))
 output_train = np.zeros((len(pdb_names) - len(testpdb_names), len(useable_keys) * 2))
 
+relevant_values_test = np.zeros((len(testpdb_names), len(useable_keys) * 2))
+relevant_values_train = np.zeros(
+    (len(pdb_names) - len(testpdb_names), len(useable_keys) * 2)
+)
+
+# fill the test and train data
 for i, pdb in tqdm(list(enumerate(pdb_names))):
     if pdb in testpdb_names:
         pdb_names_test.append(pdb)
         seqs_test[len(pdb_names_test) - 1, :] = seqs[i, :]
         output_test[len(pdb_names_test) - 1, :] = output[i, :]
+        relevant_values_test[len(pdb_names_test) - 1, :] = relevant_values[i, :]
     else:
         pdb_names_train.append(pdb)
         seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :]
         output_train[len(pdb_names_train) - 1, :] = output[i, :]
+        relevant_values_train[len(pdb_names_train) - 1, :] = relevant_values[i, :]
 
 print("Test data size: ", seqs_test.shape)
 print("Training data size: ", seqs_train.shape)
@@ -235,6 +254,8 @@ with open("training_data.pickle", "wb") as f:
             output_train,
             seqs_test,
             output_test,
+            relevant_values_train,
+            relevant_values_test,
         ),
         f,
     )
