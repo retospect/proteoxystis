@@ -433,7 +433,7 @@ def main():
     if args.model:
         print(model)
 
-    testing = args.test or args.rpredict or args.rpredict
+    testing = args.test or args.rpredict or args.predict
 
     if not testing:
         train(model, seqs, output, args.epochs, relevant_train)
