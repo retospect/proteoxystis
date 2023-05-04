@@ -1,3 +1,4 @@
 5sbs: should that peg lenght be 5k?
 6y2e: PEG length 1,500 parses as 1. 
+4w7u: should say 28% PEG8000
 
