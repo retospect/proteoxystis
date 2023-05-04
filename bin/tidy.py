@@ -162,6 +162,18 @@ def parseEntry(value, pdbid):
                 f"ERROR 60: [{pdbid}] Is not interesting, value too small: {crco}".format()
             )
 
+    # make sure all spaces in the key of the values hash are replaced by underscore
+    values = {k.replace(" ", "_"): v for k, v in values.items()}
+    # make sure all keys are lowercase
+    values = {k.lower(): v for k, v in values.items()}
+
+    for key in values.keys():
+        if "__" in key:
+            raise PdbParseException(
+                f"ERROR 61: [{pdbid}] Is problematic, key contains __ "
+            )
+
+
     return values
 
 def main(datafile, outfile):
@@ -200,11 +212,6 @@ def main(datafile, outfile):
                 sequence = pdb[pdbid]["sequence"]
                 f.write(f"[{pdbid}]\n")
                 f.write(f'sequence="{sequence}"\n')
-                # make sure all spaces in the key of the values hash are replaced by underscore
-                values = {k.replace(" ", "_"): v for k, v in values.items()}
-
-                # make sure all keys are lowercase
-                values = {k.lower(): v for k, v in values.items()}
 
                 # make the toml string for the values hash
                 values_str = ", ".join([f"{k}={v}" for k, v in values.items()])
@@ -216,7 +223,6 @@ def main(datafile, outfile):
                     key_count[k] += 1
                 records_processed += 1
             except PdbParseException as e:
-                # print(e)
                 err.write(str(e) + "\n")
                 continue
         f.write("\n")
@@ -250,6 +256,9 @@ def main(datafile, outfile):
     with open("sig_keys.csv", "w") as f:
         for k in sig_key_count.keys():
             f.write(f"{k}\n")
+
+def test():
+    print("Use nose2 to run tests")
 
 if __name__ == "__main__":
     # Argparse ommandline options:

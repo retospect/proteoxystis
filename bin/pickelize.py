@@ -164,6 +164,7 @@ for i, k in tqdm(list(enumerate(pdb_names))):
 
 # Write the testdata to test.toml file
 # do this rarely if ever lest we learn about the training data
+# Regenerate test data
 if False:
     # generate a list of test data, pick 25% of the pdb names at random
     testpdb_names = np.random.choice(
@@ -223,7 +224,9 @@ for i, pdb in tqdm(list(enumerate(pdb_names))):
         relevant_values_test[len(pdb_names_test) - 1, :] = relevant_values[i, :]
     else:
         pdb_names_train.append(pdb)
-        seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :]
+        # If the next line fails, the test set needs to be regenerated
+        # just a few lines up
+        seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :] # Regenerate test data
         output_train[len(pdb_names_train) - 1, :] = output[i, :]
         relevant_values_train[len(pdb_names_train) - 1, :] = relevant_values[i, :]
 
