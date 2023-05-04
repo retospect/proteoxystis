@@ -1,4 +1,5 @@
 pypdb
 toml
 tqdm
+nose2
 

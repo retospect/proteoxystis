@@ -53,6 +53,9 @@ Converts the sequences where possible - writes error.
 
 creates tidy.toml.gz file, and a sampled tidy_s.toml file with only 10k entries, selected at random, for rapid testing. 
 
+There's at least one test in the tests directory, run the tests with nose2 (just type nose2). 
+More tests should be added, in particular from pdb-parsing-bugs.txt where we keep a running list of oddities. 
+
 ### train.py - generates a new model based on training data
 We need to write this.
 
