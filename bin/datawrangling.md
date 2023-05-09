@@ -1,5 +1,7 @@
 # Datawrangling
 
+- [![Open in Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/retospect/proteoxystis/blob/main/bin/phagetrix.ipynb)
+
 TLDR:
 - Install https://git-lfs.com/
 - After checking out the repo, run ```pickelize.py``` to make the 9GB pickle of the one hot encoded data.
