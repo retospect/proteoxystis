@@ -138,18 +138,29 @@ def setup_model(seqs, output, metadata):
         end="",
         flush=True,
     )
-    D = seqs.shape[1]  # num_features
+    D = seqs.shape[0]  # num_features
     C = output.shape[1]  # num_output_values
     # input with a 1d convolutional network, for the whole list (lenght D).
     # the step size is a multiple of the aminoacid encoding
     amino_acid_encoding_length = len(metadata["aminoacids"])
     # TODO: Convolutional 1d network with a window size of the aminoacid encoding length or a multiple
     # model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
+    ael = amino_acid_encoding_length 
+    print("ael: ", ael)
+    print("D: ", D)
+    print("C: ", C)
 
-    model = nn.Sequential(nn.Linear(D, 512))
-    model = append_to_model(model, 512, 128, 2, 1)
-    model = append_to_model(model, 128, 32, 100, 10)
-    model = append_to_model(model, 32, 200, 5, 3)
+    model = nn.Sequential(nn.Conv1d(in_channels=D, out_channels=128, kernel_size=ael*5, stride=amino_acid_encoding_length, padding=0, padding_mode='zeros'))
+    model = model.append(nn.ReLU())
+    model = model.append(nn.Dropout(0.5))
+    model = model.append(nn.Conv1d(in_channels=128, out_channels=128, kernel_size=ael*2, stride=amino_acid_encoding_length, padding=0, padding_mode='zeros'))
+    model = model.append(nn.ReLU())
+    model = model.append(nn.Dropout(0.5))
+    model = model.append(nn.Conv1d(in_channels=128, out_channels=128, kernel_size=ael*100, stride=amino_acid_encoding_length, padding=0, padding_mode='zeros'))
+    model = model.append(nn.ReLU())
+    model = model.append(nn.Dropout(0.5))
+    model = model.append(nn.Conv1d(in_channels=128, out_channels=128, kernel_size=ael*10, stride=amino_acid_encoding_length, padding=0, padding_mode='zeros'))
+    model = append_to_model(model, 128, 200, 15, 3)
     model.append(nn.Linear(200, C))
 
     model.to(find_torch_training_device())
