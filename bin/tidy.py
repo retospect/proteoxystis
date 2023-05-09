@@ -20,15 +20,14 @@ import datetime
 class PdbParseException(Exception):
     pass
 
+
 def getSequence(pdbid, pdb):
     # Get the value
     value = pdb[pdbid]
     l = len(value["sequence"])
     if l > 7000:
         raise PdbParseException(
-            f"ERROR 53: [{key}] Sequence length {l} is too long".format(
-                key=pdbid, l=l
-            )
+            f"ERROR 53: [{key}] Sequence length {l} is too long".format(key=pdbid, l=l)
         )
     if l < 15:
         raise PdbParseException(
@@ -41,10 +40,11 @@ def getSequence(pdbid, pdb):
         )
     return value["sequence"]
 
+
 def parseEntry(value, pdbid):
     solvent = None
     # Try to get the solvent condition
-    crco = value 
+    crco = value
     values = {}
 
     # Case insensitive match with regexp: "Conditions: .... PH: 7.0"
@@ -62,8 +62,7 @@ def parseEntry(value, pdbid):
                 values["ph"] = ph
             except ValueError:
                 raise PdbParseException(
-                    f"ERROR 55: [{pdbid}] Could not parse PH from crystal conditions: {crco}".format(
-                    )
+                    f"ERROR 55: [{pdbid}] Could not parse PH from crystal conditions: {crco}".format()
                 )
 
         # Extract the matthews coefficient from "38.45 MATTHEWS COEFFICIENT"
@@ -134,28 +133,26 @@ def parseEntry(value, pdbid):
                         values[f"{name}_mM"] = number
                 except ValueError:
                     raise PdbParseException(
-                        f"ERROR 57: [{pdbid}] Could not parse crystallization conditions (doublette error): {crco}".format(
-                        )
+                        f"ERROR 57: [{pdbid}] Could not parse crystallization conditions (doublette error): {crco}".format()
                     )
 
         # Get number for "VM (ANGSTROMS**3/DA): 2.70"
-        m = re.search(
-            r"VM \(ANGSTROMS\*\*3/DA\):\s+([0-9.]+)", crco, re.IGNORECASE
-        )
+        m = re.search(r"VM \(ANGSTROMS\*\*3/DA\):\s+([0-9.]+)", crco, re.IGNORECASE)
         if m is not None:
             vm = float(m.group(1))
             values["vm_A_pwr_DA"] = vm
 
     # if there are fewer than 4 interesting things in the values hash, skip the writing and throw an error
     if len(values) < 4:
-        raise PdbParseException(f"ERROR 58: [{pdbid}] Is not interesting, less than 4 values found: {crco}")
+        raise PdbParseException(
+            f"ERROR 58: [{pdbid}] Is not interesting, less than 4 values found: {crco}"
+        )
 
     # if any value is greater or smaller than what numpy.half can hold, continue
     for val in values.values():
         if val >= np.finfo(np.half).max:
             raise PdbParseException(
-                f"ERROR 59: [{pdbid}] Is not interesting, value too large: {crco}".format(
-                )
+                f"ERROR 59: [{pdbid}] Is not interesting, value too large: {crco}".format()
             )
         if val <= np.finfo(np.half).min:
             raise PdbParseException(
@@ -173,8 +170,8 @@ def parseEntry(value, pdbid):
                 f"ERROR 61: [{pdbid}] Is problematic, key contains __ "
             )
 
-
     return values
+
 
 def main(datafile, outfile):
     # Open the pdb.toml file
@@ -188,7 +185,6 @@ def main(datafile, outfile):
 
     # Sequence lenght for some stats
     records_processed = 0
-
 
     # Open the training.toml file
     with open(outfile, "wt") as f:
@@ -228,7 +224,6 @@ def main(datafile, outfile):
         f.write("\n")
         f.write("[metadata]\n")
 
-
         # count the key counts that are greater than 10 and collect them with their count in sig_key_count
         key_count_gt_10 = 0
         sig_key_count = {}
@@ -257,8 +252,10 @@ def main(datafile, outfile):
         for k in sig_key_count.keys():
             f.write(f"{k}\n")
 
+
 def test():
     print("Use nose2 to run tests")
+
 
 if __name__ == "__main__":
     # Argparse ommandline options:
@@ -268,7 +265,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Tidy up the pdb.toml file")
     parser.add_argument("--test", action="store_true", help="Run the test suite")
-    parser.add_argument("--quick", action="store_true", help="Run the truncated test suite")
+    parser.add_argument(
+        "--quick", action="store_true", help="Run the truncated test suite"
+    )
     args = parser.parse_args()
 
     if args.test:
@@ -278,4 +277,3 @@ if __name__ == "__main__":
             main("pdb-few.toml.gz", "training-few.toml")
         else:
             main("pdb.toml.gz", "training.toml")
-

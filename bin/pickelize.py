@@ -226,7 +226,7 @@ for i, pdb in tqdm(list(enumerate(pdb_names))):
         pdb_names_train.append(pdb)
         # If the next line fails, the test set needs to be regenerated
         # just a few lines up
-        seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :] # Regenerate test data
+        seqs_train[len(pdb_names_train) - 1, :] = seqs[i, :]  # Regenerate test data
         output_train[len(pdb_names_train) - 1, :] = output[i, :]
         relevant_values_train[len(pdb_names_train) - 1, :] = relevant_values[i, :]
 
