@@ -411,6 +411,10 @@ def predict(
 
 
 def main():
+    args = parse_commandline()
+    if not args.rpredict or args.predict:
+        init_seeds(args.seed)
+    find_torch_training_device()  # get message out and cache updated
     (
         metadata,
         seqs,
@@ -420,10 +424,6 @@ def main():
         relevant_train,
         relevant_test,
     ) = load_data()
-    args = parse_commandline()
-    if not args.rpredict or args.predict:
-        init_seeds(args.seed)
-    find_torch_training_device()  # get message out and cache updated
     if args.preload and not args.new:
         print("Preloading model from", args.preload, "...", end="")
         model = torch.load(args.preload)
