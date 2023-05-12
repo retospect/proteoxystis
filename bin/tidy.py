@@ -160,9 +160,23 @@ def parseEntry(value, pdbid):
             )
 
     # make sure all spaces in the key of the values hash are replaced by underscore
-    values = {k.replace(" ", "_"): v for k, v in values.items()}
+
     # make sure all keys are lowercase
     values = {k.lower(): v for k, v in values.items()}
+
+    values = {k.replace("tetrahydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("pentahydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("trihydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("bihydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("dihydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("hydrate ", ""): v for k, v in values.items()}
+    values = {k.replace("buffering solution ", ""): v for k, v in values.items()}
+    values = {k.replace("buffering ", ""): v for k, v in values.items()}
+    values = {k.replace("buffer ", ""): v for k, v in values.items()}
+    values = {k.replace(" +", " "): v for k, v in values.items()}
+    values = {k.replace("-", "_"): v for k, v in values.items()}
+
+    values = {k.replace(" ", "_"): v for k, v in values.items()}
 
     for key in values.keys():
         if "__" in key:
