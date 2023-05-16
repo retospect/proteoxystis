@@ -45,8 +45,14 @@ def parse_commandline():
         "--seed", type=int, default=42, help="seed for the random number generator"
     )
 
-    # make a new model, overwrite existing one
-    parser.add_argument("--new", action="store_true", help="make a new model")
+    # make a new model, one of linear, cnn, transformer, lstm
+    parser.add_argument(
+        "--new",
+        type=str,
+        default="linear",
+        help="make a new model, one of linear, cnn, transformer, lstm. Will overwrite existing trained model. Default: linear",
+    )
+
 
     # picks two random entries from the test set and shows them
     parser.add_argument(
@@ -130,31 +136,6 @@ def append_to_model(model, n_input, n_output, layers, relu_spacing):
             model.append(nn.ReLU())
     return model
 
-
-def setup_model(seqs, output, metadata):
-    # Setup model, model definition
-    print(
-        "Setting up new model (will overwrite the old if it exists)...",
-        end="",
-        flush=True,
-    )
-    D = seqs.shape[1]  # num_features
-    C = output.shape[1]  # num_output_values
-    # input with a 1d convolutional network, for the whole list (lenght D).
-    # the step size is a multiple of the aminoacid encoding
-    amino_acid_encoding_length = len(metadata["aminoacids"])
-    # TODO: Convolutional 1d network with a window size of the aminoacid encoding length or a multiple
-    # model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
-
-    model = nn.Sequential(nn.Linear(D, 512))
-    model = append_to_model(model, 512, 128, 2, 1)
-    model = append_to_model(model, 128, 32, 100, 10)
-    model = append_to_model(model, 32, 200, 5, 3)
-    model.append(nn.Linear(200, C))
-
-    model.to(find_torch_training_device())
-    print("done")
-    return model
 
 
 class custom_loss(nn.Module):
@@ -429,7 +410,24 @@ def main():
         model = torch.load(args.preload)
         print("done")
     else:
-        model = setup_model(seqs, output, metadata)
+        if args.new == "linear":
+            from model.linear import setup_model
+            model = setup_model(seqs, output, metadata)
+        elif args.new == "conv":
+            from model.conv import setup_model
+            model = setup_model(seqs, output, metadata)
+        elif args.new == "transformer":
+            from model.transformer import setup_model
+            model = setup_model(seqs, output, metadata) 
+        elif args.new == "lstm":
+            from model.lstm import setup_model
+            model = setup_model(seqs, output, metadata)
+        else:
+            print("Unknown model type", args.new)
+            exit(1)
+
+
+        model.to(find_torch_training_device())
     if args.model:
         print(model)
 
