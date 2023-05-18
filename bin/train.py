@@ -11,9 +11,13 @@ import torch.optim as optim
 import random
 import argparse
 import copy
+import os
 from encoding import get_active_values
 from functools import lru_cache
 
+# make data 16 bit floats instead of 64 on GPU.
+# For caching speed.
+os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 
 def parse_commandline():
     """Setup commandline arguments and parse them."""
@@ -179,9 +183,11 @@ def train(model, seqs, output, training_epochs, relevance):
     # Train
     dev = find_torch_training_device()
     print("Sending data to device...", end="", flush=True)
-    in_data = torch.from_numpy(seqs).float().to(dev)
-    out_data = torch.from_numpy(output).float().to(dev)
-    relevance = torch.from_numpy(relevance).float().to(dev)
+    print(seqs.dtype)
+    in_data = torch.from_numpy(seqs).to(dev)
+
+    out_data = torch.from_numpy(output).to(dev)
+    relevance = torch.from_numpy(relevance).to(dev)
 
     # Pytorch pickling takes a lot longer than numpy pickling done this way.
     # Speed is good.
@@ -193,7 +199,9 @@ def train(model, seqs, output, training_epochs, relevance):
     best_model = model
     # calculate current model loss
     print("Running model first time...", end="", flush=True)
+    print(in_data.dtype)
     output_pred = model(in_data)
+    print("pred done", end="", flush=True)
     prev_loss = criterion(output_pred, out_data).item()
     print("done")
     initial_loss = prev_loss
@@ -244,9 +252,10 @@ def train(model, seqs, output, training_epochs, relevance):
 def test(model, seqs_test, output_test, relevance):
     # Test
     print("Testing...", end="")
-    in_data = torch.from_numpy(seqs_test).float().to(find_torch_training_device())
-    out_data = torch.from_numpy(output_test).float().to(find_torch_training_device())
-    relevance = torch.from_numpy(relevance).float().to(find_torch_training_device())
+    dev = find_torch_training_device()
+    in_data = torch.from_numpy(seqs_test).to(dev)
+    out_data = torch.from_numpy(output_test).to(dev)
+    relevance = torch.from_numpy(relevance).to(dev)
     criterion = nn.MSELoss()
     output_pred = model(in_data)
     output_pred = (
@@ -284,32 +293,28 @@ def predict(
     if pdbid in metadata["pdb_names_test"]:
         index = metadata["pdb_names_test"].index(pdbid)
         in_data = (
-            torch.from_numpy(seqs_test[index]).float().to(find_torch_training_device())
+            torch.from_numpy(seqs_test[index]).to(find_torch_training_device())
         )
         out_data = (
             torch.from_numpy(output_test[index])
-            .float()
             .to(find_torch_training_device())
         )
         relevance = (
             torch.from_numpy(relevant_test[index])
-            .float()
             .to(find_torch_training_device())
         )
         print("From test set.")
     if pdbid in metadata["pdb_names_train"]:
         index = metadata["pdb_names_train"].index(pdbid)
         in_data = (
-            torch.from_numpy(seqs_train[index]).float().to(find_torch_training_device())
+            torch.from_numpy(seqs_train[index]).to(find_torch_training_device())
         )
         out_data = (
             torch.from_numpy(output_train[index])
-            .float()
             .to(find_torch_training_device())
         )
         relevance = (
             torch.from_numpy(relevant_train[index])
-            .float()
             .to(find_torch_training_device())
         )
         print("From training set.")
@@ -323,6 +328,7 @@ def predict(
         output_pred,
         metadata["sig_keys"],
         metadata["correction_factor"],
+        metadata["correction_offset"],
         magic_treshhold,
     )
     (actual_hash, actual_conf) = get_active_values(

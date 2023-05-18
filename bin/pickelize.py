@@ -79,7 +79,7 @@ nr_of_distinct_aminoacids = len(aminoacids)
 
 # make the numpy sequence array for the data. Each row is a pdb in alphabetical order, with one-hot encoding of the sequence
 seqs = np.zeros(
-    (len(pdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.bool_
+    (len(pdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.float16
 )
 print("Input array size (pdb x one-hot sequence): ", seqs.shape)
 print("Filling sequence array")
@@ -87,18 +87,15 @@ for i, k in tqdm(list(enumerate(pdb_names))):
     for j, aa in enumerate(data[k]["sequence"]):
         seqs[i, j * nr_of_distinct_aminoacids + aminoacids.index(aa)] = 1
 
-# Convert all the ph fields to 10**ph
-# That's done because pH is actually a logarithmic scale
-# for k in pdb_keys:
-#    if "ph" in data[k]["values"].keys():
-#        data[k]["values"]["ph"] = 10 ** data[k]["values"]["ph"]
-
 # Normalize all the output values.
 # The values are normalized by dividing by the standard deviation of the values
 # The new value is then divided by the mean of the new values
 # The the total coorection factor is stored in the metadata dict
 print("Normalizing output values")
 metadata["correction_factor"] = {}
+metadata["correction_offset"] = {}
+floatmax = np.finfo(np.float64).min * 0.1
+floatmin = 0.0
 for key in tqdm(useable_keys):
     values = []
     value_owner = []
@@ -107,17 +104,21 @@ for key in tqdm(useable_keys):
             values.append(data[k]["values"][key])
             value_owner.append(k)
     values = np.array(values)
-    mean = np.mean(values)
-    values = values / mean
-    std = np.std(values)
-    if std == 0:
-        std = 1
-    values = values / std
-    values = 10 * values
+    maxi = np.max(values)
+    mini = np.min(values)
+    rang = maxi - mini
+    if rang == 0:
+        rang = 1
+    factor = 1.0*rang/floatmax
+    values = values / factor
+    offset = np.min(values)
+    values = values - offset
+    print(values)
     # show the key, value name, new mean and new std
     # print(key, np.mean(values), np.std(values), min(values), max(values))
-    correction_factor = mean * std / 10
+    correction_factor = factor
     metadata["correction_factor"][key] = correction_factor
+    metadata["correction_offset"][key] = offset
     for i in range(len(values)):
         data[value_owner[i]]["values"][key] = values[i]
 # make the numpy array of output values. Each row is a pdb in alphabetical order.
@@ -139,7 +140,7 @@ for i in range(len(useable_keys)):
 
 # the magic number for "this category is present"
 # increase for more category fit
-metadata["category_is_present_magic_number"] = 20
+metadata["category_is_present_magic_number"] = floatmax
 
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, key in enumerate(useable_keys):
@@ -200,11 +201,11 @@ pdb_names_test = []
 pdb_names_train = []
 # initialize seqs_test and seqs_train to the size they will have
 seqs_test = np.zeros(
-    (len(testpdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.int8
+    (len(testpdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.float16
 )
 seqs_train = np.zeros(
     (len(pdb_names) - len(testpdb_names), longest_seq * nr_of_distinct_aminoacids),
-    dtype=np.int8,
+    dtype=np.float16,
 )
 # initialize output_test and output_train to the size they will have
 output_test = np.zeros((len(testpdb_names), len(useable_keys) * 2))
