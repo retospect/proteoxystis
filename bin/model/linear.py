@@ -26,6 +26,7 @@ def setup_model(seqs, output, metadata):
         flush=True,
     )
     D = seqs.shape[1]  # num_features
+    D2 = seqs.shape[2]  # num_features
     C = output.shape[1]  # num_output_values
     # input with a 1d convolutional network, for the whole list (lenght D).
     # the step size is a multiple of the aminoacid encoding
@@ -33,7 +34,7 @@ def setup_model(seqs, output, metadata):
     # TODO: Convolutional 1d network with a window size of the aminoacid encoding length or a multiple
     # model = torch.nn.Conv1d(C, D, amino_acid_encoding_length)
 
-    model = nn.Sequential(nn.Linear(D, 512, dtype=torch.float16))
+    model = nn.Sequential(nn.Linear(D, D2, 512, dtype=torch.float16))
     model = append_to_model(model, 512, 128, 2, 1)
     model = append_to_model(model, 128, 32, 100, 10)
     model = append_to_model(model, 32, 200, 5, 3)

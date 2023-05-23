@@ -57,6 +57,8 @@ def parse_commandline():
         help="make a new model, one of linear, cnn, transformer, lstm. Will overwrite existing trained model. Default: linear",
     )
 
+    # Show data shapes
+    parser.add_argument("--shapes", action="store_true", help="show data shapes")
 
     # picks two random entries from the test set and shows them
     parser.add_argument(
@@ -411,6 +413,16 @@ def main():
         relevant_train,
         relevant_test,
     ) = load_data()
+
+    if args.shapes:
+        print("Training data shapes:")
+        print("seqs:", seqs.shape)
+        print("output:", output.shape)
+        print("seqs_test:", seqs_test.shape)
+        print("output_test:", output_test.shape)
+        print("relevant_train:", relevant_train.shape)
+        print("relevant_test:", relevant_test.shape)
+        exit(0)
     if args.preload and not args.new:
         print("Preloading model from", args.preload, "...", end="")
         model = torch.load(args.preload)
