@@ -79,13 +79,14 @@ nr_of_distinct_aminoacids = len(aminoacids)
 
 # make the numpy sequence array for the data. Each row is a pdb in alphabetical order, with one-hot encoding of the sequence
 seqs = np.zeros(
-    (len(pdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.float16
+    (len(pdb_names), longest_seq, nr_of_distinct_aminoacids), dtype=np.float16
 )
 print("Input array size (pdb x one-hot sequence): ", seqs.shape)
 print("Filling sequence array")
 for i, k in tqdm(list(enumerate(pdb_names))):
     for j, aa in enumerate(data[k]["sequence"]):
-        seqs[i, j * nr_of_distinct_aminoacids + aminoacids.index(aa)] = 1
+
+        seqs[i, j, aminoacids.index(aa)] = 1
 
 # Normalize all the output values.
 # The values are normalized by dividing by the standard deviation of the values
@@ -113,7 +114,7 @@ for key in tqdm(useable_keys):
     values = values / factor
     offset = np.min(values)
     values = values - offset
-    print(values)
+    #print(values)
     # show the key, value name, new mean and new std
     # print(key, np.mean(values), np.std(values), min(values), max(values))
     correction_factor = factor
@@ -201,10 +202,10 @@ pdb_names_test = []
 pdb_names_train = []
 # initialize seqs_test and seqs_train to the size they will have
 seqs_test = np.zeros(
-    (len(testpdb_names), longest_seq * nr_of_distinct_aminoacids), dtype=np.float16
+    (len(testpdb_names), longest_seq, nr_of_distinct_aminoacids), dtype=np.float16
 )
 seqs_train = np.zeros(
-    (len(pdb_names) - len(testpdb_names), longest_seq * nr_of_distinct_aminoacids),
+    (len(pdb_names) - len(testpdb_names), longest_seq, nr_of_distinct_aminoacids),
     dtype=np.float16,
 )
 # initialize output_test and output_train to the size they will have
