@@ -96,8 +96,8 @@ def load_data():
             output,
             seqs_test,
             output_test,
-            relevant_test,
             relevant_train,
+            relevant_test,
         ) = pickle.load(f)
     print("done")
 
