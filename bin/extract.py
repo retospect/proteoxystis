@@ -12,7 +12,7 @@ from tqdm import tqdm
 from Bio.PDB import PDBParser
 
 
-def main(quick=False):
+def main(quick=False, dates_only=False):
     print("Reading PDB files...")
     path = "data/pdb"
     files = os.listdir(path)
@@ -61,7 +61,13 @@ def main(quick=False):
                 # open and unzip the gzipped file and read the lines into an array
                 with gzip.open(filename, "rb") as f:
                     file_content = f.read()
+
                 lines = file_content.decode("utf-8").splitlines()
+
+                if dates_only:
+                    print(lines[0][57:59],lines[0][50:100], pdb_id)
+                    # 1971 is earliest entry, 1sbt
+                    continue
 
                 # check if the file is a crystallography experiment
                 experiment_type = ""
