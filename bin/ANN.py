@@ -10,20 +10,21 @@ from torch.utils.data import TensorDataset
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
+def data_split(seqs_train, output_train, seqs_test, output_test):
+    train_dataset = TensorDataset(torch.tensor(seqs_train), torch.tensor(output_train))
 
-train_dataset = TensorDataset(torch.tensor(seqs_train), torch.tensor(output_train))
+    size = len(train_dataset)
+    train_size = int(0.8 * size)
+    val_size = size - train_size
 
-size = len(train_dataset)
-train_size = int(0.8 * size)
-val_size = size - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [train_size, val_size])
+    test_dataset = TensorDataset(torch.tensor(seqs_test), torch.tensor(output_test))
 
-train_dataset, val_dataset = torch.utils.data.random_split(train_dataset, [train_size, val_size])
-test_dataset = TensorDataset(torch.tensor(seqs_test), torch.tensor(output_test))
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=8, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=8, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=8, shuffle=False)
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=8, shuffle=True)
-val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=8, shuffle=False)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=8, shuffle=False)
+    return train_loader, val_loader, test_loader
 
 class ANN(nn.Module):
     def __init__(self):
@@ -59,7 +60,7 @@ class ANN(nn.Module):
 
         return x
 
-def train_model(model, optimizer, epochs):
+def train_model(model, optimizer, epochs, train_loader, val_loader):
     model.train()
 
     train_predicts = []
@@ -147,7 +148,7 @@ def train_model(model, optimizer, epochs):
 
     return final_training_accuracy, final_validation_accuracy
 
-def test_model(model):
+def test_model(model, test_loader):
 
     test_predicts = []
     test_targets = []
@@ -182,16 +183,25 @@ def test_model(model):
 
     return final_testing_accuracy
 
-epochs = 20
-learning_rate = 0.001
-weight_decay = 0.01
+def main():
+    metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
-model = ANN()
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
-final_training_accuracy, final_validation_accuracy = train_model(model, optimizer, epochs)
-final_testing_accuracy = test_model(model)
+    epochs = 20
+    learning_rate = 0.001
+    weight_decay = 0.01
 
-print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
-print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
-print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
+    model = ANN()
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    final_training_accuracy, final_validation_accuracy = train_model(model, optimizer, epochs, train_loader, val_loader)
+    final_testing_accuracy = test_model(model, test_loader)
+
+    print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
+    print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
+    print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
+
+
+if __name__ == "__main__":
+    main()
