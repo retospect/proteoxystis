@@ -5,7 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 import torch.nn.functional as F
+from sklearn.model_selection import KFold
 from torch.utils.data import TensorDataset
+from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
@@ -27,21 +29,33 @@ class ANN(nn.Module):
     def __init__(self):
         super(ANN, self).__init__()
 
-        input_size = 754
-        hidden_size = 5
-        output_size = 86688
+        input = 754
+        output = 86688
 
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, output_size)
+        self.fc1 = nn.Linear(input, 10)
+        self.fc2 = nn.Linear(10, 10)
+        self.fc3 = nn.Linear(10, output)
+
+        self.dropout = nn.Dropout(0.5)
+
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = x.float()
 
         x = self.fc1(x)
 
-        x = F.relu(x)
+        x = self.relu(x)
+
+        x = self.dropout(x)
 
         x = self.fc2(x)
+
+        x = self.relu(x)
+
+        x = self.dropout(x)
+
+        x = self.fc3(x)
 
         return x
 
@@ -57,6 +71,7 @@ def train_model(model, optimizer, epochs):
     for epoch in range(epochs):
 
         batch_idx = 0
+        prev_accuracy = float(0)
 
         for batch in train_loader:
 
@@ -80,7 +95,12 @@ def train_model(model, optimizer, epochs):
 
             accuracy = accuracy_score(train_targets, train_predicts) * 100
 
-            print("At batch number {b} in epoch {e}, the training loss is {l:.4f} and the accuracy is {a:.4f}%".format(
+            if accuracy >= prev_accuracy:
+                prev_accuracy = accuracy
+            else:
+                break
+
+            print("At batch number {b} in epoch {e}, the training loss is {l:.4f} and the training accuracy is {a:.4f}%".format(
                 b=batch_idx, e=epoch, l=loss, a=accuracy))
 
         model.eval()
@@ -88,6 +108,8 @@ def train_model(model, optimizer, epochs):
         with torch.no_grad():
 
             batch_idx = 0
+
+            prev_accuracy = 0
 
             for batch in val_loader:
 
@@ -108,20 +130,25 @@ def train_model(model, optimizer, epochs):
 
                 accuracy = accuracy_score(val_targets, val_predicts) * 100
 
-                print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the accuracy is {a:.4f}%".format(
-                    b=batch_idx, e=epoch, l=loss, a=accuracy))
+                if accuracy >= prev_accuracy:
+                    prev_accuracy = accuracy
+                else:
+                    break
+
+                print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
+                                                                            format(b=batch_idx, e=epoch, l=loss, a=accuracy))
 
     final_training_accuracy = accuracy_score(train_targets, train_predicts) * 100
     final_validation_accuracy = accuracy_score(val_targets, val_predicts) * 100
-
-    print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
-    print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
 
     print("................................................................................")
 
     print("Training is complete")
 
+    return final_training_accuracy, final_validation_accuracy
+
 def test_model(model):
+
     test_predicts = []
     test_targets = []
 
@@ -135,8 +162,6 @@ def test_model(model):
 
             output = model(data)
 
-            loss = F.cross_entropy(output, target)
-
             batch_idx += 1
 
             predictions = torch.argmax(output, dim=1)
@@ -147,22 +172,26 @@ def test_model(model):
 
             accuracy = accuracy_score(test_targets, test_predicts) * 100
 
-            print("At batch number {b} in epoch {e} the testing loss is {l:.4f} and the accuracy is {a:.4f}%".format(
-                b=batch_idx, e=epoch, l=loss, a=accuracy))
+            print("At batch number {b} the testing accuracy is {a:.4f}%".format(b=batch_idx, a=accuracy))
 
     final_testing_accuracy = accuracy_score(test_targets, test_predicts) * 100
-
-    print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
 
     print("................................................................................")
 
     print("Testing is complete")
 
-epochs = 1
+    return final_testing_accuracy
+
+epochs = 20
 learning_rate = 0.001
+weight_decay = 0.01
 
 model = ANN()
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-train_model(model, optimizer, epochs)
-test_model(model)
+final_training_accuracy, final_validation_accuracy = train_model(model, optimizer, epochs)
+final_testing_accuracy = test_model(model)
+
+print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
+print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
+print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
