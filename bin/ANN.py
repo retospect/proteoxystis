@@ -259,33 +259,12 @@ def plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, fil
 
     print("Done plotting accuracies")
 
-def plot_cm(train_matrix, val_matrix, test_matrix, folder, filename):
-    figure, axis = plt.subplots(1, 3, figsize=(15, 5))
-
-    sns.heatmap(train_matrix, annot=True, fmt='d', cmap='Blues', ax=axis[0])
-    axis[0].set_title("Training Confusion Matrix Heatmap")
-
-    sns.heatmap(val_matrix, annot=True, fmt='d', cmap='Blues', ax=axis[1])
-    axis[1].set_title("Validation Confusion Matrix Heatmap")
-
-    sns.heatmap(test_matrix, annot=True, fmt='d', cmap='Blues', ax=axis[2])
-    axis[2].set_title("Testing Confusion Matrix Heatmap")
-
-    figure.subplots_adjust(wspace=0.5)
-
-    image_path = os.path.join(folder, filename)
-    plt.savefig(image_path)
-
-    print("...................................................................................")
-
-    print("Done plotting heatmaps")
-
 def main():
     metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
     train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
-    epochs = 1
+    epochs = 10
     learning_rate = 0.001
     weight_decay = 0.01
 
@@ -306,21 +285,23 @@ def main():
 
     plot_loss(train_losses, val_losses, folder, loss_filename)
     plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, accuracy_filename)
-    # plot_cm(train_matrix, val_matrix, test_matrix, folder, matrix_filename)
 
     print("...................................................................................")
 
     print("Confusion Matrices:")
-    print("Train Confusion Matrix: {tcm:.4f}".format(tcm=train_matrix))
-    print("Validation Confusion Matrix: {vcm:.4f}".format(vcm=val_matrix))
-    print("Test Confusion Matrix: {tecm:.4f}".format(tecm=test_matrix))
+    print("Train Confusion Matrix:")
+    print(train_matrix)
+    print("Validation Confusion Matrix:")
+    print(val_matrix)
+    print("Test Confusion Matrix:")
+    print(test_matrix)
 
     print("...................................................................................")
 
     print("Accuracies:")
-    print("The final training accuracy is {ftra}%".format(ftra=final_training_accuracy))
-    print("The final validation accuracy is {fva}%".format(fva=final_validation_accuracy))
-    print("The final testing accuracy is {fta}%".format(fta=final_testing_accuracy))
+    print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
+    print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
+    print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
 
 if __name__ == "__main__":
     main()
