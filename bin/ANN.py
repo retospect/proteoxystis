@@ -64,8 +64,6 @@ class ANN(nn.Module):
 def train_model(model, optimizer, epochs, train_loader, val_loader):
     model.train()
 
-    old_model = copy.deepcopy(model)
-
     train_losses = []
     val_losses = []
 
@@ -123,6 +121,8 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
             prev_val_accuracy = 0
 
             batch_idx = 0
+
+            old_model = copy.deepcopy(model)
 
             for batch in val_loader:
 
@@ -266,6 +266,12 @@ def plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, fil
 def main():
     metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
+    with open("data.txt", "w") as file:
+        file.write("seqs_train: " + str(seqs_train) + "\n")
+        file.write("output_train: " + str(output_train) + "\n")
+        file.write("seqs_test: " + str(seqs_test) + "\n")
+        file.write("output_test: " + str(output_test) + "\n")
+
     train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
     epochs = 10
@@ -280,6 +286,26 @@ def main():
 
     train_losses = torch.tensor(train_losses).detach().numpy()
     val_losses = torch.tensor(val_losses).detach().numpy()
+
+    with open("train_loss.txt", "w") as file:
+        for loss in train_losses:
+            file.write(str(loss) + "\n")
+
+    with open("val_loss.txt", "w") as file:
+        for loss in val_losses:
+            file.write(str(loss) + "\n")
+
+    with open("train_result.txt", "w") as file:
+        for accuracy in train_accuracies:
+            file.write(str(accuracy) + "\n")
+
+    with open("val_result.txt", "w") as file:
+        for accuracy in val_accuracies:
+            file.write(str(accuracy) + "\n")
+
+    with open("test_result.txt", "w") as file:
+        for accuracy in test_accuracies:
+            file.write(str(accuracy) + "\n")
 
     folder = '/Users/arpitha/Documents/cse144/Final_Project/proteoxystis/bin'
 
