@@ -31,13 +31,15 @@ class ANN(nn.Module):
         super(ANN, self).__init__()
 
         input = 754
+        hidden = 10
         output = 86688
+        ratio = 0.5
 
-        self.fc1 = nn.Linear(input, 10)
-        self.fc2 = nn.Linear(10, 10)
-        self.fc3 = nn.Linear(10, output)
+        self.fc1 = nn.Linear(input, hidden)
+        self.fc2 = nn.Linear(hidden, hidden)
+        self.fc3 = nn.Linear(hidden, output)
 
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(ratio)
 
         self.relu = nn.ReLU()
 
@@ -45,15 +47,11 @@ class ANN(nn.Module):
         x = x.float()
 
         x = self.fc1(x)
-
         x = self.relu(x)
-
         x = self.dropout(x)
 
         x = self.fc2(x)
-
         x = self.relu(x)
-
         x = self.dropout(x)
 
         x = self.fc3(x)
@@ -201,7 +199,6 @@ def main():
     print("The final training accuracy is {ftra:.4f}%".format(ftra=final_training_accuracy))
     print("The final validation accuracy is {fva:.4f}%".format(fva=final_validation_accuracy))
     print("The final testing accuracy is {fta:.4f}%".format(fta=final_testing_accuracy))
-
 
 if __name__ == "__main__":
     main()
