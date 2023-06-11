@@ -1,4 +1,5 @@
 import os
+import copy
 import torch
 from train import *
 import pandas as pd
@@ -30,8 +31,13 @@ def data_split(seqs_train, output_train, seqs_test, output_test):
     return train_loader, val_loader, test_loader
 
 class ANN(nn.Module):
-    def __init__(self, input, hidden, output, ratio):
+    def __init__(self):
         super(ANN, self).__init__()
+
+        input = 698
+        hidden = 10
+        output = 86688
+        ratio = 0.5
 
         self.fc1 = nn.Linear(input, hidden)
         self.fc2 = nn.Linear(hidden, hidden)
@@ -53,14 +59,15 @@ class ANN(nn.Module):
         x = self.dropout(x)
 
         x = self.fc3(x)
-        x = self.relu(x)
-        x = self.dropout(x)
 
         return x
 
 def train_model(model, optimizer, epochs, train_loader, val_loader):
 
+    prev_loss = 0
+
     prev_train_accuracy = 0
+    prev_val_accuracy = 0
 
     train_losses = []
     val_losses = []
@@ -101,18 +108,61 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
             train_targets.extend(targets)
 
             accuracy = accuracy_score(train_targets, train_predicts) * 100
-            prev_train_accuracy = accuracy
 
             train_losses.append(loss.item())
             train_accuracies.append(accuracy)
 
-            if float(accuracy) < float(prev_train_accuracy):
+            if float(accuracy) >= float(prev_train_accuracy):
+                prev_train_accuracy = accuracy
+            else:
+                prev_train_accuracy = accuracy
                 break
 
             print("At batch number {b} in epoch {e}, the training loss is {l:.4f} and the training accuracy is {a:.4f}%".format(
                 b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
 
-        model, val_losses, val_accuracies = valid_model(model, val_loader, val_predicts, val_targets, val_losses, val_accuracies, epoch)
+        model.eval()
+
+        with torch.no_grad():
+
+            batch_idx = 0
+
+            old_model = ANN()
+            old_model.load_state_dict(model.state_dict())
+
+            for batch in val_loader:
+
+                target = batch[0].float()
+                data = batch[1].float()
+
+                output = model(data)
+
+                loss = F.cross_entropy(output, target)
+
+                batch_idx += 1
+
+                predictions = torch.argmax(output, dim=1)
+                targets = torch.argmax(target, dim=1)
+
+                val_predicts.extend(predictions)
+                val_targets.extend(targets)
+
+                accuracy = accuracy_score(val_targets, val_predicts) * 100
+
+                if float(accuracy) >= float(prev_val_accuracy):
+                    prev_loss = loss
+                    prev_val_accuracy = accuracy
+                    old_model.load_state_dict(model.state_dict())
+                else:
+                    loss = prev_loss
+                    accuracy = prev_val_accuracy
+                    model.load_state_dict(old_model.state_dict())
+
+                val_losses.append(loss.item())
+                val_accuracies.append(accuracy)
+
+                print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
+                                                                            format(b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
 
     final_training_accuracy = accuracy_score(train_targets, train_predicts) * 100
     final_training_precision = precision_score(train_targets, train_predicts, average='weighted', zero_division=1.0) * 100
@@ -129,51 +179,6 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
     print("Training is complete")
 
     return train_losses, val_losses, final_training_accuracy, final_training_precision, final_training_recall, final_training_f1_score, final_validation_accuracy, final_validation_precision, final_validation_recall, final_validation_f1_score, train_accuracies, val_accuracies
-
-def valid_model(model, val_loader, val_predicts, val_targets, val_losses, val_accuracies, epoch):
-
-    model.eval()
-
-    old_model = copy.deepcopy(model)
-
-    with torch.no_grad():
-
-        prev_val_accuracy = 0
-
-        batch_idx = 0
-
-        for batch in val_loader:
-
-            target = batch[0].float()
-            data = batch[1].float()
-
-            output = model(data)
-
-            loss = F.cross_entropy(output, target)
-
-            batch_idx += 1
-
-            predictions = torch.argmax(output, dim=1)
-            targets = torch.argmax(target, dim=1)
-
-            val_predicts.extend(predictions)
-            val_targets.extend(targets)
-
-            accuracy = accuracy_score(val_targets, val_predicts) * 100
-
-            if float(accuracy) >= float(prev_val_accuracy):
-                prev_val_accuracy = accuracy
-                old_model = copy.deepcopy(model)
-                val_losses.append(loss.item())
-                val_accuracies.append(accuracy)
-            else:
-                model = copy.deepcopy(old_model)
-                return model, val_losses, val_accuracies
-
-            print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
-                                                                        format(b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
-
-    return model, val_losses, val_accuracies
 
 def test_model(model, test_loader):
 
@@ -273,18 +278,12 @@ def main():
 
     train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
-    input = 698
-    hidden = 10
-    output = 86688
-    ratio = 0.5
-
-    epochs = 10
-    learning_rate = 0.001
+    epochs = 5
+    learning_rate = 0.01
     weight_decay = 0.01
-    momentum = 0.2
 
-    model = ANN(input, hidden, output, ratio)
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
+    model = ANN()
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     train_losses, val_losses, final_training_accuracy, final_training_precision, final_training_recall, final_training_f1_score, final_validation_accuracy, final_validation_precision, final_validation_recall, final_validation_f1_score, train_accuracies, val_accuracies = train_model(model, optimizer, epochs, train_loader, val_loader)
     final_testing_accuracy, test_accuracies, final_testing_accuracy, final_testing_precision, final_testing_recall, final_testing_f1_score = test_model(model, test_loader)
@@ -296,7 +295,6 @@ def main():
 
     loss_filename = 'Losses_Plot'
     accuracy_filename = 'Accuracies_Plot'
-    matrix_filename = "Confusion_Matrix_Heatmap"
 
     plot_loss(train_losses, val_losses, folder, loss_filename)
     plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, accuracy_filename)
