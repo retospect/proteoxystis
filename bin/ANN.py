@@ -13,6 +13,14 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
+def standardize_preprocess(matrix):
+    mean = np.mean(matrix)
+    std = np.std(matrix)
+
+    new_matrix = (matrix - mean)/std
+
+    return new_matrix
+
 def data_split(seqs_train, output_train, seqs_test, output_test):
     train_dataset = TensorDataset(torch.tensor(seqs_train), torch.tensor(output_train))
 
@@ -30,13 +38,8 @@ def data_split(seqs_train, output_train, seqs_test, output_test):
     return train_loader, val_loader, test_loader
 
 class ANN(nn.Module):
-    def __init__(self):
+    def __init__(self, input, hidden, output, ratio):
         super(ANN, self).__init__()
-
-        input = 754
-        hidden = 10
-        output = 86688
-        ratio = 0.5
 
         self.fc1 = nn.Linear(input, hidden)
         self.fc2 = nn.Linear(hidden, hidden)
@@ -266,6 +269,13 @@ def plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, fil
 def main():
     metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
+    seqs_train_standardized = standardize_preprocess(seqs_train)
+    seqs_test_standardized = standardize_preprocess(seqs_test)
+    output_train_standardized = standardize_preprocess(output_train)
+    output_test_standardized = standardize_preprocess(output_test)
+
+    # seqs_train_standardized = preprocess(seqs_train, output_train, seqs_test, output_test)
+
     # with open("seqs_train.txt", "w") as file:
     #     for data in seqs_train:
     #         file.write(str(data) + "\n")
@@ -282,14 +292,20 @@ def main():
     #     for data in output_test:
     #         file.write(str(data) + "\n")
 
-    train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
+    train_loader, val_loader, test_loader = data_split(seqs_train_standardized, output_train_standardized, seqs_test_standardized, output_test_standardized)
+
+    input = 698
+    hidden = 10
+    output = 86688
+    ratio = 0.5
 
     epochs = 10
     learning_rate = 0.001
     weight_decay = 0.01
+    momentum = 0.2
 
-    model = ANN()
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    model = ANN(input, hidden, output, ratio)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 
     train_losses, val_losses, final_training_accuracy, final_training_precision, final_training_recall, final_training_f1_score, final_validation_accuracy, final_validation_precision, final_validation_recall, final_validation_f1_score, train_accuracies, val_accuracies = train_model(model, optimizer, epochs, train_loader, val_loader)
     final_testing_accuracy, test_accuracies, final_testing_accuracy, final_testing_precision, final_testing_recall, final_testing_f1_score = test_model(model, test_loader)
@@ -300,7 +316,7 @@ def main():
     # with open("train_loss.txt", "w") as file:
     #     for loss in train_losses:
     #         file.write(str(loss) + "\n")
-    # 
+    #
     # with open("val_loss.txt", "w") as file:
     #     for loss in val_losses:
     #         file.write(str(loss) + "\n")
