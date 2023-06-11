@@ -59,7 +59,6 @@ class ANN(nn.Module):
         return x
 
 def train_model(model, optimizer, epochs, train_loader, val_loader):
-    model.train()
 
     train_losses = []
     val_losses = []
@@ -75,9 +74,13 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
 
     for epoch in range(epochs):
 
+        model.train()
+
         batch_idx = 0
 
         prev_train_accuracy = 0
+
+        old_model = copy.deepcopy(model)
 
         for batch in train_loader:
 
@@ -102,54 +105,18 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
             accuracy = accuracy_score(train_targets, train_predicts) * 100
 
             if float(accuracy) >= float(prev_train_accuracy):
-                train_losses.append(loss.item())
                 prev_train_accuracy = accuracy
+                old_model = copy.deepcopy(model)
+                train_losses.append(loss.item())
                 train_accuracies.append(accuracy)
             else:
+                model = copy.deepcopy(old_model)
                 break
 
             print("At batch number {b} in epoch {e}, the training loss is {l:.4f} and the training accuracy is {a:.4f}%".format(
                 b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
 
-        model.eval()
-
-        with torch.no_grad():
-
-            prev_val_accuracy = 0
-
-            batch_idx = 0
-
-            old_model = copy.deepcopy(model)
-
-            for batch in val_loader:
-
-                target = batch[0].float()
-                data = batch[1].float()
-
-                output = model(data)
-
-                loss = F.cross_entropy(output, target)
-
-                batch_idx += 1
-
-                predictions = torch.argmax(output, dim=1)
-                targets = torch.argmax(target, dim=1)
-
-                val_predicts.extend(predictions)
-                val_targets.extend(targets)
-
-                accuracy = accuracy_score(val_targets, val_predicts) * 100
-
-                if float(accuracy) >= float(prev_val_accuracy):
-                    val_losses.append(loss.item())
-                    prev_val_accuracy = accuracy
-                    val_accuracies.append(accuracy)
-                    old_model = copy.deepcopy(model)
-                else:
-                    model = copy.deepcopy(old_model)
-
-                print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
-                                                                            format(b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
+        model, val_losses, val_accuracies = valid_model(model, val_loader, val_predicts, val_targets, val_losses, val_accuracies, epoch)
 
     final_training_accuracy = accuracy_score(train_targets, train_predicts) * 100
     final_training_precision = precision_score(train_targets, train_predicts, average='weighted', zero_division=1.0) * 100
@@ -166,6 +133,51 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
     print("Training is complete")
 
     return train_losses, val_losses, final_training_accuracy, final_training_precision, final_training_recall, final_training_f1_score, final_validation_accuracy, final_validation_precision, final_validation_recall, final_validation_f1_score, train_accuracies, val_accuracies
+
+def valid_model(model, val_loader, val_predicts, val_targets, val_losses, val_accuracies, epoch):
+
+    model.eval()
+
+    old_model = copy.deepcopy(model)
+
+    with torch.no_grad():
+
+        prev_val_accuracy = 0
+
+        batch_idx = 0
+
+        for batch in val_loader:
+
+            target = batch[0].float()
+            data = batch[1].float()
+
+            output = model(data)
+
+            loss = F.cross_entropy(output, target)
+
+            batch_idx += 1
+
+            predictions = torch.argmax(output, dim=1)
+            targets = torch.argmax(target, dim=1)
+
+            val_predicts.extend(predictions)
+            val_targets.extend(targets)
+
+            accuracy = accuracy_score(val_targets, val_predicts) * 100
+
+            if float(accuracy) >= float(prev_val_accuracy):
+                prev_val_accuracy = accuracy
+                old_model = copy.deepcopy(model)
+                val_losses.append(loss.item())
+                val_accuracies.append(accuracy)
+            else:
+                model = copy.deepcopy(old_model)
+                return model, val_losses, val_accuracies
+
+            print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
+                                                                        format(b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
+
+    return val_losses, val_accuracies
 
 def test_model(model, test_loader):
 
