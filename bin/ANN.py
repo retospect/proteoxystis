@@ -13,15 +13,6 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-def preprocess(matrix):
-    minimum = np.min(matrix)
-    maximum = np.max(matrix)
-    range = maximum - minimum
-
-    scaled_matrix = (matrix - minimum) / range
-
-    return scaled_matrix
-
 def data_split(seqs_train, output_train, seqs_test, output_test):
     train_dataset = TensorDataset(torch.tensor(seqs_train), torch.tensor(output_train))
 
@@ -62,6 +53,8 @@ class ANN(nn.Module):
         x = self.dropout(x)
 
         x = self.fc3(x)
+        x = self.relu(x)
+        x = self.dropout(x)
 
         return x
 
@@ -270,30 +263,7 @@ def plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, fil
 def main():
     metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
-    seqs_train_scaled = preprocess(seqs_train)
-    seqs_test_scaled = preprocess(seqs_test)
-    output_train_scaled = preprocess(output_train)
-    output_test_scaled = preprocess(output_test)
-
-    # seqs_train_standardized = preprocess(seqs_train, output_train, seqs_test, output_test)
-
-    # with open("seqs_train.txt", "w") as file:
-    #     for data in seqs_train:
-    #         file.write(str(data) + "\n")
-    #
-    # with open("output_train.txt", "w") as file:
-    #     for data in output_train:
-    #         file.write(str(data) + "\n")
-    #
-    # with open("seqs_test.txt", "w") as file:
-    #     for data in seqs_test:
-    #         file.write(str(data) + "\n")
-    #
-    # with open("output_test.txt", "w") as file:
-    #     for data in output_test:
-    #         file.write(str(data) + "\n")
-
-    train_loader, val_loader, test_loader = data_split(seqs_train_scaled, output_train_scaled, seqs_test_scaled, output_test_scaled)
+    train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
     input = 698
     hidden = 10
@@ -313,26 +283,6 @@ def main():
 
     train_losses = torch.tensor(train_losses).detach().numpy()
     val_losses = torch.tensor(val_losses).detach().numpy()
-
-    # with open("train_loss.txt", "w") as file:
-    #     for loss in train_losses:
-    #         file.write(str(loss) + "\n")
-    #
-    # with open("val_loss.txt", "w") as file:
-    #     for loss in val_losses:
-    #         file.write(str(loss) + "\n")
-    #
-    # with open("train_result.txt", "w") as file:
-    #     for accuracy in train_accuracies:
-    #         file.write(str(accuracy) + "\n")
-    #
-    # with open("val_result.txt", "w") as file:
-    #     for accuracy in val_accuracies:
-    #         file.write(str(accuracy) + "\n")
-    #
-    # with open("test_result.txt", "w") as file:
-    #     for accuracy in test_accuracies:
-    #         file.write(str(accuracy) + "\n")
 
     folder = '/Users/arpitha/Documents/cse144/Final_Project/proteoxystis/bin'
 
