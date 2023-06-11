@@ -13,13 +13,14 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-def standardize_preprocess(matrix):
-    mean = np.mean(matrix)
-    std = np.std(matrix)
+def preprocess(matrix):
+    minimum = np.min(matrix)
+    maximum = np.max(matrix)
+    range = maximum - minimum
 
-    new_matrix = (matrix - mean)/std
+    scaled_matrix = (matrix - minimum) / range
 
-    return new_matrix
+    return scaled_matrix
 
 def data_split(seqs_train, output_train, seqs_test, output_test):
     train_dataset = TensorDataset(torch.tensor(seqs_train), torch.tensor(output_train))
@@ -269,10 +270,10 @@ def plot_accuracy(train_accuracies, val_accuracies, test_accuracies, folder, fil
 def main():
     metadata, seqs_train, output_train, seqs_test, output_test, relevant_test, relevant_train = load_data()
 
-    seqs_train_standardized = standardize_preprocess(seqs_train)
-    seqs_test_standardized = standardize_preprocess(seqs_test)
-    output_train_standardized = standardize_preprocess(output_train)
-    output_test_standardized = standardize_preprocess(output_test)
+    seqs_train_scaled = preprocess(seqs_train)
+    seqs_test_scaled = preprocess(seqs_test)
+    output_train_scaled = preprocess(output_train)
+    output_test_scaled = preprocess(output_test)
 
     # seqs_train_standardized = preprocess(seqs_train, output_train, seqs_test, output_test)
 
@@ -292,7 +293,7 @@ def main():
     #     for data in output_test:
     #         file.write(str(data) + "\n")
 
-    train_loader, val_loader, test_loader = data_split(seqs_train_standardized, output_train_standardized, seqs_test_standardized, output_test_standardized)
+    train_loader, val_loader, test_loader = data_split(seqs_train_scaled, output_train_scaled, seqs_test_scaled, output_test_scaled)
 
     input = 698
     hidden = 10
