@@ -60,6 +60,8 @@ class ANN(nn.Module):
 
 def train_model(model, optimizer, epochs, train_loader, val_loader):
 
+    prev_train_accuracy = 0
+
     train_losses = []
     val_losses = []
 
@@ -77,10 +79,6 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
         model.train()
 
         batch_idx = 0
-
-        prev_train_accuracy = 0
-
-        old_model = copy.deepcopy(model)
 
         for batch in train_loader:
 
@@ -103,14 +101,12 @@ def train_model(model, optimizer, epochs, train_loader, val_loader):
             train_targets.extend(targets)
 
             accuracy = accuracy_score(train_targets, train_predicts) * 100
+            prev_train_accuracy = accuracy
 
-            if float(accuracy) >= float(prev_train_accuracy):
-                prev_train_accuracy = accuracy
-                old_model = copy.deepcopy(model)
-                train_losses.append(loss.item())
-                train_accuracies.append(accuracy)
-            else:
-                model = copy.deepcopy(old_model)
+            train_losses.append(loss.item())
+            train_accuracies.append(accuracy)
+
+            if float(accuracy) < float(prev_train_accuracy):
                 break
 
             print("At batch number {b} in epoch {e}, the training loss is {l:.4f} and the training accuracy is {a:.4f}%".format(
@@ -177,7 +173,7 @@ def valid_model(model, val_loader, val_predicts, val_targets, val_losses, val_ac
             print("At batch number {b} in epoch {e} the validation loss is {l:.4f} and the validation accuracy is {a:.4f}%".
                                                                         format(b=batch_idx, e=(epoch+1), l=loss, a=accuracy))
 
-    return val_losses, val_accuracies
+    return model, val_losses, val_accuracies
 
 def test_model(model, test_loader):
 
