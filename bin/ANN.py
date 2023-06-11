@@ -263,7 +263,7 @@ def main():
 
     train_loader, val_loader, test_loader = data_split(seqs_train, output_train, seqs_test, output_test)
 
-    epochs = 1
+    epochs = 10
     learning_rate = 0.001
     weight_decay = 0.01
 
