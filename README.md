@@ -11,6 +11,7 @@ Protexystis is a deep neural network, trained on PDB data, that predicts the sol
 
 - install package with ```pip install protexystis```.
 - run prediction with ```protex sequence.fa```. The output is a list of predicted solvents. sequence.fa is a dna? or protein? sequence.
+- run "python ANN.py" to implement Artificial Neural Network on the dataset. The protein solvent predictions generated achieved a testing precision of 75%.
 
 ## Training the model and updating the package
 
