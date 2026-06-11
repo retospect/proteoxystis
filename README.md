@@ -1,7 +1,7 @@
 [![check](https://github.com/retospect/proteoxystis/actions/workflows/check.yml/badge.svg)](https://github.com/retospect/proteoxystis/actions/workflows/check.yml)
 # Proteoxystis - Crystal solvent prediction for XRay Crystallography
 
-**Under Construction, does not work**
+**Still in Progress**
 
 Given the DNA sequence, predicts a set of likely solvents for that protein.
 
